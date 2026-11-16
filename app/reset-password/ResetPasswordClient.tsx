@@ -54,11 +54,17 @@ export default function ResetPasswordClient() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#05070d] px-4 text-white">
+    <main className="flex min-h-screen items-center justify-center bg-[#0A2137] px-4 text-white">
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-white/5 p-6"
       >
+        <Link href="/" className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-xl text-[#6CCEB0]">ϟ</span>
+          <span className="text-xl font-medium tracking-tight">
+            Stream<span className="text-[#6CCEB0]">Lounge</span>
+          </span>
+        </Link>
         <h1 className="text-xl font-semibold">Choose a new password</h1>
 
         {done ? (

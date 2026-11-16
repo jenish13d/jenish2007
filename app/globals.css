@@ -1,14 +1,7 @@
 @import "tailwindcss";
    @import "./arounda-theme.css";
-   @import "./ui.css";
 
 :root {
-  /* Was supplied by next/font/google. Declared here so the build has no
-     build-time network dependency on fonts.googleapis.com. */
-  --font-geist-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  --font-geist-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
-    "Liberation Mono", monospace;
   --primary: #5B8BFF;
   --secondary: #7C3AED;
   --accent: #A78BFA;
