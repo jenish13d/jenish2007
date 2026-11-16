@@ -1,0 +1,129 @@
+/* Arounda-style theme for the StreamLounge dashboard.
+   Import once in app/globals.css:  @import "./arounda-theme.css";
+   Colours read from the style guide (hex labels in the image were blurry,
+   so tweak the tokens below if any are slightly off). */
+
+:root {
+  --ss-navy: #0a2137;
+  --ss-navy-deep: #081a2c;
+  --ss-violet: #54438b;
+  --ss-lilac: #8e87b0;
+  --ss-glow: #6c5cb0;
+  --ss-blue: #4d8aff;
+  --ss-white: #ffffff;
+
+  --ss-font: "Neue Haas Grotesk Display", "Neue Haas Grotesk Text",
+    "Helvetica Neue", Helvetica, Inter, Arial, sans-serif;
+}
+
+.ss-dashboard {
+  font-family: var(--ss-font);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  background: var(--ss-navy);
+}
+
+/* Weights from the guide: Regular / Medium / Semibold (no Black) */
+.ss-dashboard h1,
+.ss-dashboard h2 {
+  font-weight: 400;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+.ss-dashboard h3,
+.ss-dashboard .font-semibold { font-weight: 500; }
+.ss-dashboard .font-bold,
+.ss-dashboard .font-black { font-weight: 600; }
+
+/* ---------- Background: navy top, lilac glow left, violet pool bottom ---------- */
+.ss-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(60% 45% at 18% 48%, rgba(124, 108, 196, 0.85), transparent 70%),
+    radial-gradient(70% 50% at 15% 100%, rgba(84, 67, 139, 0.95), transparent 70%),
+    radial-gradient(55% 45% at 100% 100%, rgba(8, 26, 44, 0.95), transparent 70%),
+    linear-gradient(170deg, #0a2137 0%, #1b2a5a 38%, #3b3a82 68%, #2a2f6b 100%);
+}
+.ss-bg::before {
+  content: "";
+  position: absolute;
+  width: 60vw;
+  height: 60vw;
+  left: -15vw;
+  top: 20vh;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(142, 135, 176, 0.35), transparent 65%);
+  filter: blur(60px);
+  animation: ss-drift 18s ease-in-out infinite alternate;
+}
+.ss-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+@keyframes ss-drift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(8vw, -6vh) scale(1.15); }
+}
+
+/* ---------- Glass pills & cards (like the palette chips) ---------- */
+.ss-glass {
+  background: linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: 0 20px 60px -20px rgba(8, 26, 44, 0.6);
+}
+.ss-pill { border-radius: 9999px; }
+.ss-card { border-radius: 28px; transition: transform .3s ease, border-color .3s ease; }
+.ss-card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.32); }
+
+/* ---------- Headline gradient: white -> lilac -> violet ---------- */
+.ss-gradient-text {
+  background: linear-gradient(90deg, #ffffff 0%, #c9c1ff 45%, #8f7cf0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- Small label style ("Typography", "Colour Palette") ---------- */
+.ss-eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* ---------- Accent button ---------- */
+.ss-btn-primary {
+  background: var(--ss-blue);
+  color: #fff;
+  font-weight: 500;
+  border-radius: 9999px;
+  padding: 0.7rem 1.4rem;
+  transition: box-shadow .25s ease, transform .25s ease;
+}
+.ss-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px -8px rgba(77, 138, 255, 0.8);
+}
+
+/* ---------- Colour swatch chip (reusable on dashboard stats) ---------- */
+.ss-swatch {
+  display: inline-block;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ss-bg::before { animation: none; }
+}

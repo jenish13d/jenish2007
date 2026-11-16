@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="110" viewBox="0 0 560 110" fill="none">
+  <defs>
+    <linearGradient id="portal" x1="18" y1="20" x2="92" y2="89" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5EEAD4"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+    <linearGradient id="lounge" x1="281" y1="34" x2="404" y2="73" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#65DEC9"/>
+      <stop offset="1" stop-color="#B8A9ED"/>
+    </linearGradient>
+  </defs>
+  <rect width="560" height="110" rx="18" fill="#0A0E1F"/>
+  <circle cx="55" cy="55" r="39" fill="#111A2D"/>
+  <path d="M34.5 77.5A29 29 0 1 1 75.5 77.5" stroke="#27344A" stroke-width="5" stroke-linecap="round"/>
+  <path d="M34.5 77.5A29 29 0 0 1 75.5 32.5" stroke="url(#portal)" stroke-width="5" stroke-linecap="round"/>
+  <rect x="39" y="51" width="7" height="16" rx="3.5" fill="#5EEAD4"/>
+  <rect x="51.5" y="40" width="7" height="27" rx="3.5" fill="#87C8E8"/>
+  <rect x="64" y="46" width="7" height="21" rx="3.5" fill="#A78BFA"/>
+  <circle cx="76" cy="32" r="4" fill="#F5F8FF"/>
+  <text x="116" y="68" fill="#F5F8FF" font-family="Geist, 'Segoe UI', sans-serif" font-size="38" font-weight="550" letter-spacing="-1.25">Stream</text>
+  <text x="246" y="68" fill="url(#lounge)" font-family="Geist, 'Segoe UI', sans-serif" font-size="38" font-weight="650" letter-spacing="-1.25">Lounge</text>
+</svg>
