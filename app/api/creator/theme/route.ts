@@ -1,3 +1,4 @@
+import { exactIlikePattern } from "@/lib/db/like";
 import {
   apiError,
   apiSuccess,
@@ -27,7 +28,7 @@ export const GET = withErrorHandling("creator/theme#GET", async (request: Reques
     const { data } = await supabase
       .from("public_creator_profiles")
       .select("overlay_theme")
-      .ilike("username", parsedUsername.data)
+      .ilike("username", exactIlikePattern(parsedUsername.data))
       .eq("public_page_enabled", true)
       .limit(1)
       .maybeSingle();

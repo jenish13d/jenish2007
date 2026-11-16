@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { safeNextPath } from "@/lib/http/safe-redirect";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 function LoginForm() {
@@ -41,12 +42,7 @@ function LoginForm() {
       // The proxy appends ?next= when it redirects an unauthenticated visitor,
       // so send them on to where they were headed. Only same-origin relative
       // paths are honoured — an absolute URL here would be an open redirect.
-      const next = searchParams.get("next");
-      const destination =
-        next && next.startsWith("/") && !next.startsWith("//")
-          ? next
-          : "/dashboard";
-      router.push(destination);
+      router.push(safeNextPath(searchParams.get("next")));
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -69,7 +65,7 @@ function LoginForm() {
       const { error } = await supabase.auth.resetPasswordForEmail(
         email.trim(),
         {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
         }
       );
 

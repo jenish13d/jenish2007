@@ -15,6 +15,10 @@ import {
   clientIdentifier,
   consume,
 } from "@/lib/security/rate-limit";
+import {
+  STICKER_IMAGE_BUCKET,
+  stickerPathFor,
+} from "@/lib/storage/soundboard";
 import { getSupabaseServiceClient } from "@/lib/supabase/service";
 import { fieldErrors, stickerSchema } from "@/lib/validation/schemas";
 
@@ -141,6 +145,29 @@ export const POST = withErrorHandling("stickers/generate", async (request: Reque
     console.error("[stickers] OpenAI returned no image payload");
     await releaseAiGeneration(supabase, paymentId, "stickers");
     return apiError("upstream_unavailable", "No sticker was produced. Please retry.", {
+      retryable: true,
+    });
+  }
+
+  // Stored server-side so the overlay can show it. The path comes from the
+  // verified token, and /api/interactions looks it up the same way.
+  const stickerPath = stickerPathFor(creatorId, paymentId);
+  if (!stickerPath) {
+    await releaseAiGeneration(supabase, paymentId, "stickers");
+    return apiError("bad_request", "That payment cannot be used for a sticker.");
+  }
+
+  const { error: uploadError } = await supabase.storage
+    .from(STICKER_IMAGE_BUCKET)
+    .upload(stickerPath, Buffer.from(imageBase64, "base64"), {
+      contentType: "image/png",
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error("[stickers] could not store sticker:", uploadError.message);
+    await releaseAiGeneration(supabase, paymentId, "stickers");
+    return apiError("upstream_unavailable", "Could not save the sticker. Please retry.", {
       retryable: true,
     });
   }

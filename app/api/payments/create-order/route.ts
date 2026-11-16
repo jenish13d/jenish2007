@@ -1,3 +1,4 @@
+import { exactIlikePattern } from "@/lib/db/like";
 import { serverEnv } from "@/lib/env";
 import {
   apiError,
@@ -65,7 +66,7 @@ export const POST = withErrorHandling(
     const { data: profile, error: profileError } = await supabase
       .from("public_creator_profiles")
       .select("id, username, public_page_enabled")
-      .ilike("username", username)
+      .ilike("username", exactIlikePattern(username))
       .eq("public_page_enabled", true)
       .limit(1)
       .maybeSingle();

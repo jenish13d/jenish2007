@@ -1,3 +1,4 @@
+import { exactIlikePattern } from "@/lib/db/like";
 import {
   apiError,
   apiSuccess,
@@ -100,7 +101,7 @@ export const PATCH = withErrorHandling(
       const { data: clash, error: clashError } = await supabase
         .from("creator_profiles")
         .select("id")
-        .ilike("username", updates.username)
+        .ilike("username", exactIlikePattern(updates.username))
         .neq("id", user.id)
         .limit(1);
 

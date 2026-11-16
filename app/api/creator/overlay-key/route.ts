@@ -7,6 +7,7 @@ import {
   consume,
 } from "@/lib/security/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseServiceClient } from "@/lib/supabase/service";
 
 /**
  * GET  /api/creator/overlay-key — the signed-in creator's OBS browser-source URL.
@@ -17,8 +18,12 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
  * an afterthought: a creator who leaks their overlay URL can invalidate it in
  * one click rather than having to change their username.
  *
- * Both handlers read and write through the cookie-backed client, so RLS
- * guarantees a creator can only see and rotate their own key.
+ * The caller is authenticated with the cookie-backed client. The key itself is
+ * read and written with the service client, scoped to that user's id, because
+ * migration 0004 deliberately withholds the overlay_key column from the
+ * `authenticated` role (otherwise any signed-in user could read another
+ * creator's key through the public-profile SELECT policy and drain their
+ * alerts). Reading it through the cookie client always failed.
  */
 
 function overlayUrl(key: string): string {
@@ -36,7 +41,7 @@ export const GET = withErrorHandling("creator/overlay-key#GET", async () => {
     return apiError("unauthorized", "Sign in to see your overlay URL.");
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseServiceClient()
     .from("creator_profiles")
     .select("overlay_key")
     .eq("id", user.id)
@@ -83,7 +88,7 @@ export const POST = withErrorHandling("creator/overlay-key#POST", async (request
 
   const nextKey = generateOverlayKey();
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseServiceClient()
     .from("creator_profiles")
     .update({ overlay_key: nextKey })
     .eq("id", user.id)

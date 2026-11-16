@@ -18,12 +18,17 @@ import {
   consume,
 } from "@/lib/security/rate-limit";
 import {
+  STICKER_IMAGE_BUCKET,
   isInteractionAudioPathFor,
   resolveSoundForCreator,
+  stickerPathFor,
 } from "@/lib/storage/soundboard";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseServiceClient } from "@/lib/supabase/service";
-import { insertPaidSubmission } from "@/lib/submissions/repository";
+import {
+  attachContentToRecoveredSubmission,
+  insertPaidSubmission,
+} from "@/lib/submissions/repository";
 import { fieldErrors, submitInteractionSchema } from "@/lib/validation/schemas";
 
 /**
@@ -216,13 +221,14 @@ export const POST = withErrorHandling("interactions#POST", async (request: Reque
         .from("interaction-audio")
         .list(creatorId, {
           search: input.storage_path.slice(prefix.length),
-          limit: 1,
+          limit: 10,
         });
       if (listError) {
         console.error("[interactions#POST] storage list failed:", listError.message);
         return apiError("internal_error", "Could not verify that recording.");
       }
-      if (!listed?.length) {
+      const fileName = input.storage_path.slice(prefix.length);
+      if (!listed?.some((object) => object.name === fileName)) {
         return apiError(
           "validation_failed",
           "That recording was not found. Please record again.",
@@ -274,9 +280,25 @@ export const POST = withErrorHandling("interactions#POST", async (request: Reque
         });
       }
       metadata.prompt = prompt.slice(0, definition.maxMessageLength);
-      if (input.sticker_url) {
-        metadata.sticker_url = input.sticker_url;
+
+      // The image is the one /api/stickers/generate stored for this payment.
+      // A client-supplied image URL is never accepted: it would let a viewer
+      // put any picture on the creator's stream.
+      const stickerPath = stickerPathFor(creatorId, paymentId);
+      if (!stickerPath) {
+        return apiError("forbidden", "That payment cannot be used for a sticker.");
       }
+      const { data: stored, error: stickerListError } = await service.storage
+        .from(STICKER_IMAGE_BUCKET)
+        .list(creatorId, { search: `${paymentId}.png`, limit: 10 });
+      if (stickerListError) {
+        console.error("[interactions#POST] sticker lookup failed:", stickerListError.message);
+        return apiError("internal_error", "Could not verify that sticker.");
+      }
+      if (!stored?.some((object) => object.name === `${paymentId}.png`)) {
+        return apiError("validation_failed", "Generate the sticker before sending it.");
+      }
+      metadata.sticker_path = stickerPath;
       message = metadata.prompt;
       break;
     }
@@ -286,10 +308,12 @@ export const POST = withErrorHandling("interactions#POST", async (request: Reque
   /* Insert                                                                 */
   /* ---------------------------------------------------------------------- */
 
+  const senderName = input.sender_name?.trim().slice(0, 50) || "Anonymous";
+
   const result = await insertPaidSubmission(service, {
     creatorId,
     interactionType,
-    senderName: input.sender_name?.trim().slice(0, 50) || "Anonymous",
+    senderName,
     message,
     amountRupees,
     razorpayOrderId: orderId,
@@ -298,6 +322,28 @@ export const POST = withErrorHandling("interactions#POST", async (request: Reque
   });
 
   if (result.status === "duplicate") {
+    // The webhook may have recovered this payment first. If that placeholder
+    // has not played yet, give it the viewer's real content.
+    const attachedId = await attachContentToRecoveredSubmission(service, paymentId, {
+      senderName,
+      message,
+      metadata,
+    });
+    if (attachedId) {
+      return apiSuccess(
+        {
+          submission: {
+            id: attachedId,
+            interaction_type: interactionType,
+            status: "pending",
+            amount: amountRupees,
+          },
+          message: "Sent. Watch the stream.",
+        },
+        { status: 201 },
+      );
+    }
+
     return apiError("conflict", "This payment has already been submitted.", {
       meta: {
         already_submitted: true,

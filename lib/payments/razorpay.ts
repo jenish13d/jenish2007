@@ -119,6 +119,8 @@ export interface RazorpayPayment {
   status: string;
   method: string | null;
   captured: boolean;
+  /** Unix seconds. */
+  created_at?: number;
 }
 
 export function createOrder(params: {

@@ -207,7 +207,11 @@ END $$;
 -- SELECT policy above therefore exposes every column of a public profile to any
 -- signed-in user, including email and overlay_key. Column grants close that.
 REVOKE SELECT (email, overlay_key) ON public.creator_profiles FROM authenticated;
-REVOKE ALL ON public.creator_profiles FROM anon;
+-- NOTE: no blanket "REVOKE ALL ... FROM anon" here. public_creator_profiles
+-- is a security_invoker view, so anon needs column-level SELECT on the public
+-- columns of this table for public pages to work. The live project grants
+-- exactly those columns (see 0000_live_schema_alignment.sql); a blanket revoke
+-- removed them and broke every public creator page.
 
 -- anon reads public profiles exclusively through the view.
 GRANT SELECT ON public.public_creator_profiles TO anon, authenticated;

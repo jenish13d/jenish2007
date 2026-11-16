@@ -105,6 +105,70 @@ export async function findSubmissionIdByPayment(
   return data?.[0]?.id ?? null;
 }
 
+/**
+ * Gives a webhook-recovered placeholder the viewer's real content.
+ *
+ * If the webhook recovered a payment before the browser submitted (Razorpay
+ * retries, slow networks), the browser's submission hits the unique index.
+ * When the recovered row has not been played yet, the viewer's content
+ * replaces the placeholder instead of being discarded. Returns the row id when
+ * the content was attached.
+ */
+export async function attachContentToRecoveredSubmission(
+  supabase: SupabaseClient,
+  razorpayPaymentId: string,
+  content: {
+    senderName: string;
+    message: string | null;
+    metadata: SubmissionMetadata;
+  },
+): Promise<string | null> {
+  const { data: rows, error } = await supabase
+    .from("creator_submissions")
+    .select("id, status, metadata")
+    .eq("metadata->>razorpay_payment_id", razorpayPaymentId)
+    .limit(1);
+
+  if (error) {
+    console.error("[submissions] recovered lookup failed:", error.message);
+    return null;
+  }
+
+  const existing = rows?.[0] as
+    | { id: string; status: string; metadata: SubmissionMetadata | null }
+    | undefined;
+  if (
+    !existing ||
+    existing.status !== "pending" ||
+    existing.metadata?.recovered_by_webhook !== true
+  ) {
+    return null;
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from("creator_submissions")
+    .update({
+      sender_name: content.senderName,
+      message: content.message,
+      metadata: {
+        ...existing.metadata,
+        ...content.metadata,
+        recovered_by_webhook: false,
+        content_attached_at: new Date().toISOString(),
+      },
+    })
+    .eq("id", existing.id)
+    // Only while still queued: once the overlay has claimed it, it has played.
+    .eq("status", "pending")
+    .select("id");
+
+  if (updateError) {
+    console.error("[submissions] recovered update failed:", updateError.message);
+    return null;
+  }
+  return updated?.[0]?.id ?? null;
+}
+
 export async function paymentAlreadyRedeemed(
   supabase: SupabaseClient,
   razorpayPaymentId: string,

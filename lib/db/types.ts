@@ -118,6 +118,9 @@ export interface SubmissionMetadata {
   task?: string;
   /** Stickers */
   prompt?: string;
+  /** Server-side path in the sticker-images bucket. */
+  sticker_path?: string;
+  /** Resolved at delivery time, never persisted. */
   sticker_url?: string;
   /** Overlay lifecycle bookkeeping */
   reclaimed_once?: boolean;

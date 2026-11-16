@@ -11,7 +11,10 @@ import {
 } from "@/lib/payments/razorpay";
 import { verifyWebhookSignature } from "@/lib/payments/signatures";
 import { getSupabaseServiceClient } from "@/lib/supabase/service";
-import { insertPaidSubmission } from "@/lib/submissions/repository";
+import {
+  findSubmissionIdByPayment,
+  insertPaidSubmission,
+} from "@/lib/submissions/repository";
 
 /**
  * Razorpay webhook.
@@ -40,6 +43,18 @@ import { insertPaidSubmission } from "@/lib/submissions/repository";
  */
 
 export const dynamic = "force-dynamic";
+
+/**
+ * How long a fresh payment is left for the viewer's browser to submit.
+ *
+ * Razorpay usually delivers `payment.captured` within seconds, which is before
+ * the browser has called /api/interactions (AI stickers take 10-30 seconds to
+ * generate first). Recovering immediately inserted a placeholder alert and the
+ * viewer's real message was then rejected as a duplicate. Inside this window
+ * the webhook answers 503 so Razorpay retries later; by then the browser has
+ * normally submitted and the retry is a no-op.
+ */
+const RECOVERY_GRACE_MS = 10 * 60 * 1000;
 
 /** Health probe. Reports configuration without revealing any secret. */
 export async function GET() {
@@ -186,6 +201,23 @@ export const POST = withErrorHandling("payments/webhook", async (request: Reques
   }
 
   const supabase = getSupabaseServiceClient();
+
+  const existingSubmissionId = await findSubmissionIdByPayment(supabase, paymentId);
+  if (existingSubmissionId) {
+    return NextResponse.json({
+      status: "ok",
+      already_processed: true,
+      submission_id: existingSubmissionId,
+    });
+  }
+
+  const paymentCreatedAt = Number(paymentResult.data.created_at ?? 0) * 1000;
+  if (paymentCreatedAt > 0 && Date.now() - paymentCreatedAt < RECOVERY_GRACE_MS) {
+    return NextResponse.json(
+      { status: "deferred", reason: "awaiting_browser_submission" },
+      { status: 503 },
+    );
+  }
 
   const { data: profile, error: profileError } = await supabase
     .from("creator_profiles")

@@ -21,6 +21,7 @@ import {
 import {
   resolveSoundForCreator,
   signInteractionAudio,
+  signStickerImage,
 } from "@/lib/storage/soundboard";
 import { getSupabaseServiceClient } from "@/lib/supabase/service";
 import {
@@ -151,6 +152,26 @@ export const GET = withErrorHandling("overlay/event#GET", async (request: Reques
       metadata.playback_error = "The voice note could not be loaded.";
     }
   }
+
+  // Sticker images are only ever served from our own bucket. Any other image
+  // URL that reached the metadata is dropped rather than shown on stream.
+  delete metadata.sticker_url;
+  delete metadata.image_url;
+  delete metadata.imageData;
+  delete metadata.image;
+  if (claimed.interaction_type === "stickers") {
+    const stickerPath =
+      typeof metadata.sticker_path === "string" ? metadata.sticker_path : null;
+    const signed = stickerPath
+      ? await signStickerImage(supabase, stickerPath, claimed.creator_id)
+      : null;
+    if (signed) {
+      metadata.sticker_url = signed;
+    } else {
+      metadata.playback_error = "The sticker image could not be loaded.";
+    }
+  }
+  delete metadata.sticker_path;
 
   // Never hand the raw storage path to the browser source; it only needs the
   // signed URL, and the path is internal layout.

@@ -21,8 +21,8 @@ export const usernameSchema = z
   .trim()
   .min(3, "Usernames are at least 3 characters.")
   .max(30, "Usernames are at most 30 characters.")
-  // Letters, digits, underscore. No '%' or '_' reaching a LIKE pattern, and
-  // nothing that needs escaping in a URL path.
+  // Letters, digits, underscore. '_' is a LIKE wildcard, so every ILIKE lookup
+  // on a username must go through exactIlikePattern (lib/db/like.ts).
   .regex(
     /^[A-Za-z0-9_]+$/,
     "Usernames can contain letters, numbers and underscores only.",

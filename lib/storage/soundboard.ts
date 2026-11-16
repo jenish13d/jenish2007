@@ -190,3 +190,50 @@ export function isAllowedImageMime(value: unknown): value is string {
     (ALLOWED_IMAGE_MIME_TYPES as readonly string[]).includes(value)
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* AI stickers                                                                */
+/* -------------------------------------------------------------------------- */
+
+/** Private bucket for generated sticker images (migration 0007). */
+export const STICKER_IMAGE_BUCKET = "sticker-images";
+
+/**
+ * Where the sticker paid for by `paymentId` is stored.
+ *
+ * Derived only from server-verified claims (creator and payment id from the
+ * signed payment token), never from request input, so a viewer cannot point a
+ * submission at an arbitrary image. Returns null for an id that is not a plain
+ * Razorpay identifier.
+ */
+export function stickerPathFor(creatorId: string, paymentId: string): string | null {
+  if (!/^[0-9a-f-]{36}$/i.test(creatorId)) return null;
+  if (!/^[A-Za-z0-9_]+$/.test(paymentId)) return null;
+  return `${creatorId}/${paymentId}.png`;
+}
+
+/** Signs a stored sticker for the overlay, refusing paths outside the creator's folder. */
+export async function signStickerImage(
+  supabase: SupabaseClient,
+  storagePath: string,
+  creatorId: string,
+): Promise<string | null> {
+  const fileName = storagePath.slice(`${creatorId}/`.length);
+  if (
+    !storagePath.startsWith(`${creatorId}/`) ||
+    !/^[A-Za-z0-9_]+\.png$/.test(fileName)
+  ) {
+    console.error(`[storage] refusing to sign sticker '${storagePath}'`);
+    return null;
+  }
+
+  const { data, error } = await supabase.storage
+    .from(STICKER_IMAGE_BUCKET)
+    .createSignedUrl(storagePath, MEDIA_SIGNED_URL_TTL_SECONDS);
+
+  if (error || !data?.signedUrl) {
+    console.error(`[storage] could not sign sticker '${storagePath}':`, error?.message);
+    return null;
+  }
+  return data.signedUrl;
+}
