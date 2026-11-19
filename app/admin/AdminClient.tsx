@@ -136,7 +136,7 @@ function MfaGate({ enrolled, onVerified, notify }: { enrolled: boolean; onVerifi
     (async () => {
       const supabase = getSupabaseBrowserClient();
       const { data } = await supabase.auth.mfa.listFactors();
-      const verified = data?.totp?.find((f) => f.status === "verified");
+      const verified = data?.totp?.find((f: { id: string; status: string }) => f.status === "verified");
       if (verified) {
         setFactorId(verified.id);
         return;
