@@ -31,6 +31,12 @@ type Preferences = {
   announcer_read_emojis: boolean;
   announcer_read_message: boolean;
   announcer_min_paise: number;
+  leaderboard_opt_in: boolean;
+  location_city: string | null;
+  location_district: string | null;
+  location_state: string | null;
+  location_country: string | null;
+  location_continent: string | null;
 };
 
 type Platform = {
@@ -394,6 +400,37 @@ export default function ManageInteractionsClient() {
             <button type="button" onClick={testAnnouncement} className="st-btn-ghost mt-5 px-5 py-2.5 text-sm">
               Play a test announcement
             </button>
+          </Panel>
+
+          <Panel title="LoungeBoard" subtitle="Appear in the public superchat rankings. Off by default; only the places you enter here are shown." delay={320}>
+            <Toggle label="Show me on LoungeBoard" checked={view.leaderboard_opt_in} onChange={(v) => set("leaderboard_opt_in", v)} />
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              {([
+                ["location_city", "City"],
+                ["location_district", "District"],
+                ["location_state", "State"],
+              ] as const).map(([key, label]) => (
+                <div key={key}>
+                  <label className="st-label" htmlFor={key}>{label}</label>
+                  <input id={key} maxLength={60} value={view[key] ?? ""} onChange={(e) => set(key, e.target.value || null)} className="st-field w-full" />
+                </div>
+              ))}
+              <div>
+                <label className="st-label" htmlFor="location_country">Country code</label>
+                <input id="location_country" maxLength={2} placeholder="IN" value={view.location_country ?? ""}
+                  onChange={(e) => set("location_country", e.target.value.toUpperCase().replace(/[^A-Z]/g, "") || null)} className="st-field w-full" />
+              </div>
+              <div>
+                <label className="st-label" htmlFor="location_continent">Continent</label>
+                <select id="location_continent" value={view.location_continent ?? ""} onChange={(e) => set("location_continent", e.target.value || null)} className="st-field w-full">
+                  <option value="">Not set</option>
+                  {[["AS", "Asia"], ["EU", "Europe"], ["NA", "North America"], ["SA", "South America"], ["AF", "Africa"], ["OC", "Oceania"]].map(([v, l]) => (
+                    <option key={v} value={v}>{l}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <p className="st-muted mt-3 text-xs leading-5">Never enter a street address. Rankings count verified superchats after refunds.</p>
           </Panel>
         </div>
       )}

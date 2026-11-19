@@ -337,6 +337,9 @@ export default function CreatorPage() {
   // The submission API has always accepted a sender name; the original UI
   // hardcoded "Anonymous", so viewers could not be credited on stream.
   const [senderName, setSenderName] = useState("");
+  // The creator's message limit (Manage Interactions); 50 until loaded.
+  const [messageLimit, setMessageLimit] = useState(50);
+  const [messageLength, setMessageLength] = useState(0);
 
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
@@ -565,6 +568,12 @@ export default function CreatorPage() {
       const { data, error } = await supabase.rpc("get_public_interactions", {
         p_username: lookupUsername,
       });
+
+      const { data: settingsRows } = await supabase.rpc("get_public_creator_settings", {
+        p_username: lookupUsername,
+      });
+      const limitRow = Array.isArray(settingsRows) ? (settingsRows[0] as { message_max_length?: number } | undefined) : undefined;
+      if (limitRow?.message_max_length) setMessageLimit(limitRow.message_max_length);
 
       if (error) {
         console.error("PUBLIC CREATOR INTERACTIONS RPC ERROR:", error);
@@ -1942,6 +1951,11 @@ export default function CreatorPage() {
                 />
                 <p className="mt-1 text-[10px] text-[#8EA4B8]">
                   Shown on {name}&apos;s stream with your alert. Leave blank to stay anonymous.
+                  Your account details are never shown to the creator.
+                </p>
+                <p className="mt-1 text-[10px] text-[#8EA4B8]">
+                  <a href={`/login?next=/${username}`} className="text-[#6CCEB0] hover:underline">Sign in</a>{" "}
+                  to earn LoungePoints on your superchats.
                 </p>
               </div>
 
@@ -2674,8 +2688,13 @@ export default function CreatorPage() {
                     <textarea
                       data-text-interaction="true"
                       placeholder="Type your message..."
+                      maxLength={messageLimit}
+                      onChange={(event) => setMessageLength(event.target.value.length)}
                       className="mt-4 h-28 w-full resize-none rounded-xl border border-[#34536A] bg-[#0A2137] p-4 text-sm outline-none placeholder:text-[#61758A] focus:border-[#4D8AFF]"
                     />
+                    <p className="mt-1 text-right text-[10px] text-[#8EA4B8]">
+                      {messageLength}/{messageLimit}
+                    </p>
 
                     <div className="mt-5 rounded-2xl border border-[#34536A] bg-[#0A2137] p-4">
                       <div className="flex items-center justify-between">

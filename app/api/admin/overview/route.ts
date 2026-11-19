@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 export const GET = withErrorHandling("admin/overview", async (request: Request) => {
   const gate = await requireAdmin(request);
   if (!gate.ok) return gate.response;
-  const { data, error } = await getSupabaseServiceClient().rpc("sl_admin_overview");
+  const db = getSupabaseServiceClient();
+  const [{ data, error }, liability] = await Promise.all([db.rpc("sl_admin_overview"), db.rpc("sl_reward_liability")]);
   if (error) return apiError("internal_error", "Could not load the overview.");
-  return apiSuccess({ overview: data, role: gate.ctx.role });
+  return apiSuccess({ overview: { ...data, rewards: liability.data ?? null }, role: gate.ctx.role });
 });

@@ -14,6 +14,7 @@ type Overview = {
   payouts_pending_paise: number; payouts_completed_paise: number; payouts_failed_count: number;
   disputes_open: number; live_now: number; stream_seconds: number; webhook_failures: number;
   growth: Record<string, number>;
+  rewards: { points_outstanding: number; liability_paise: number; pending_redemptions_paise: number } | null;
 };
 type CreatorRow = {
   creator_id: string; username: string | null; creator_name: string; registered_at: string; public_page: boolean;
@@ -221,6 +222,8 @@ function OverviewTab({ o }: { o: Overview }) {
     ["Refunds", o.refunds_paise],
     ["Pending payouts", o.payouts_pending_paise],
     ["Completed payouts", o.payouts_completed_paise],
+    ["LoungePoints liability", o.rewards?.liability_paise ?? 0],
+    ["Pending point redemptions", o.rewards?.pending_redemptions_paise ?? 0],
   ];
   return (
     <div className="space-y-6">
