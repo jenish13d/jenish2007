@@ -105,12 +105,19 @@ export const POST = withErrorHandling(
       });
     }
 
+    // Optional viewer account: taken from the server-side session only. A
+    // creator paying on their own page is not credited as a viewer.
+    const { data: viewer } = await supabase.auth.getUser();
+    const viewerUserId =
+      viewer.user && viewer.user.id !== profile.id ? viewer.user.id : null;
+
     const order = await createOrder({
       amountInPaise: amountCheck.paise,
       creatorId: profile.id,
       creatorUsername: profile.username,
       interactionType,
       minimumPriceRupees: minimum,
+      viewerUserId,
     });
 
     if (!order.ok) {

@@ -7,6 +7,8 @@ import {
 import type { SubmissionMetadata } from "@/lib/db/types";
 import { interactionDefinition } from "@/lib/interactions/registry";
 import { authorizePaymentToken } from "@/lib/payments/authorize";
+import { linkPaymentToSubmission } from "@/lib/payments/ledger";
+import { moderateDisplayName } from "@/lib/moderation/display-name";
 import {
   effectiveMinimum,
   globalMinimumRupees,
@@ -308,7 +310,19 @@ export const POST = withErrorHandling("interactions#POST", async (request: Reque
   /* Insert                                                                 */
   /* ---------------------------------------------------------------------- */
 
-  const senderName = input.sender_name?.trim().slice(0, 50) || "Anonymous";
+  const { data: creatorIdentity } = await service
+    .from("creator_profiles")
+    .select("creator_name, username")
+    .eq("id", creatorId)
+    .maybeSingle();
+  const alias = moderateDisplayName(input.sender_name, {
+    creatorName: creatorIdentity?.creator_name,
+    creatorUsername: creatorIdentity?.username,
+  });
+  if (!alias.ok) {
+    return apiError("validation_failed", alias.reason, { fields: { sender_name: [alias.reason] } });
+  }
+  const senderName = alias.value;
 
   const result = await insertPaidSubmission(service, {
     creatorId,
@@ -330,6 +344,7 @@ export const POST = withErrorHandling("interactions#POST", async (request: Reque
       metadata,
     });
     if (attachedId) {
+      await linkPaymentToSubmission(service, paymentId, attachedId, senderName);
       return apiSuccess(
         {
           submission: {
@@ -355,6 +370,8 @@ export const POST = withErrorHandling("interactions#POST", async (request: Reque
   if (result.status === "error") {
     return apiError("internal_error", "Could not record your interaction.");
   }
+
+  await linkPaymentToSubmission(service, paymentId, result.submission.id, senderName);
 
   return apiSuccess(
     {

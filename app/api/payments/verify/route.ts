@@ -5,6 +5,7 @@ import {
   withErrorHandling,
 } from "@/lib/http/responses";
 import { confirmPaymentWithGateway } from "@/lib/payments/authorize";
+import { recordCapturedPayment } from "@/lib/payments/ledger";
 import { verifyCheckoutSignature } from "@/lib/payments/signatures";
 import { generatePaymentToken } from "@/lib/payments/tokens";
 import { isInteractionType } from "@/lib/interactions/registry";
@@ -85,10 +86,24 @@ export const POST = withErrorHandling("payments/verify", async (request: Request
   // Reported so the client can show "already submitted" rather than driving the
   // viewer into a duplicate attempt. It is advisory only — the authoritative
   // check is the unique index at insert time.
-  const alreadyRedeemed = await paymentAlreadyRedeemed(
-    getSupabaseServiceClient(),
-    paymentId,
-  );
+  const service = getSupabaseServiceClient();
+  const alreadyRedeemed = await paymentAlreadyRedeemed(service, paymentId);
+
+  // Record the money in the ledger now that Razorpay has confirmed the capture.
+  // The viewer account (if any) comes from the server-created order notes, never
+  // from this request. A ledger failure does not block the viewer: the webhook
+  // records the same capture idempotently.
+  const viewerNote = confirmation.order.notes?.viewer_user_id;
+  const ledger = await recordCapturedPayment(service, {
+    payment: confirmation.payment,
+    orderId,
+    creatorId: confirmation.creatorId,
+    interactionType: confirmation.interactionType,
+    viewerUserId: viewerNote && /^[0-9a-f-]{36}$/i.test(viewerNote) ? viewerNote : null,
+  });
+  if (!ledger.ok) {
+    console.error(`[verify] ledger capture deferred to webhook for ${paymentId}`);
+  }
 
   const token = generatePaymentToken({
     paymentId,

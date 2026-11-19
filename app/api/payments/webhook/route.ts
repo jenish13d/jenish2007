@@ -9,6 +9,13 @@ import {
   fetchPayment,
   validateCapturedPayment,
 } from "@/lib/payments/razorpay";
+import {
+  claimWebhookEvent,
+  finishWebhookEvent,
+  recordCapturedPayment,
+  recordDispute,
+  recordRefund,
+} from "@/lib/payments/ledger";
 import { verifyWebhookSignature } from "@/lib/payments/signatures";
 import { getSupabaseServiceClient } from "@/lib/supabase/service";
 import {
@@ -78,8 +85,21 @@ type WebhookPayload = {
   payload?: {
     payment?: { entity?: { id?: string; order_id?: string } };
     order?: { entity?: { id?: string } };
+    refund?: { entity?: { id?: string; payment_id?: string; amount?: number; status?: string } };
+    dispute?: { entity?: { id?: string; payment_id?: string; amount?: number; status?: string } };
   };
 };
+
+const CAPTURE_EVENTS = new Set(["payment.captured", "order.paid"]);
+const REFUND_EVENTS = new Set(["refund.processed"]);
+const DISPUTE_EVENTS = new Set([
+  "payment.dispute.created",
+  "payment.dispute.under_review",
+  "payment.dispute.action_required",
+  "payment.dispute.won",
+  "payment.dispute.lost",
+  "payment.dispute.closed",
+]);
 
 export const POST = withErrorHandling("payments/webhook", async (request: Request) => {
   const signature = request.headers.get("x-razorpay-signature");
@@ -118,10 +138,71 @@ export const POST = withErrorHandling("payments/webhook", async (request: Reques
     );
   }
 
-  const event = payload.event;
-  if (event !== "payment.captured" && event !== "order.paid") {
+  const event = payload.event ?? "";
+  if (!CAPTURE_EVENTS.has(event) && !REFUND_EVENTS.has(event) && !DISPUTE_EVENTS.has(event)) {
     // A 200 here tells Razorpay not to retry an event we simply do not act on.
-    return NextResponse.json({ status: "ignored", event: event ?? null });
+    return NextResponse.json({ status: "ignored", event: event || null });
+  }
+
+  // Replay protection: Razorpay sends a unique id per event. A signed body
+  // replayed later carries the same id and is acknowledged without effect.
+  const eventId = request.headers.get("x-razorpay-event-id");
+  if (!eventId || eventId.length > 100) {
+    return NextResponse.json({ status: "rejected", reason: "missing_event_id" }, { status: 400 });
+  }
+  const db = getSupabaseServiceClient();
+  const claim = await claimWebhookEvent(db, eventId, event, payload);
+  if (claim === "duplicate") {
+    return NextResponse.json({ status: "ok", replay: true });
+  }
+  if (claim === "error") {
+    return NextResponse.json({ status: "deferred", reason: "database_unavailable" }, { status: 503 });
+  }
+
+  const response = await handleEvent(event, payload);
+  await finishWebhookEvent(
+    db,
+    eventId,
+    response.status < 500
+      ? { processed: true }
+      : { processed: false, error: `HTTP ${response.status}` },
+  );
+  return response;
+});
+
+async function handleEvent(event: string, payload: WebhookPayload): Promise<NextResponse> {
+  const supabase = getSupabaseServiceClient();
+
+  if (REFUND_EVENTS.has(event)) {
+    const r = payload.payload?.refund?.entity;
+    if (!r?.id || !r.payment_id || !r.amount) {
+      return NextResponse.json({ status: "rejected", reason: "missing_refund" });
+    }
+    const result = await recordRefund(supabase, {
+      id: r.id, payment_id: r.payment_id, amount: r.amount, status: r.status ?? "processed",
+    });
+    if (!result.ok) {
+      return result.retryable
+        ? NextResponse.json({ status: "deferred", reason: "ledger_unavailable" }, { status: 503 })
+        : NextResponse.json({ status: "ignored", reason: "unknown_payment" });
+    }
+    return NextResponse.json({ status: "ok", refund: r.id });
+  }
+
+  if (DISPUTE_EVENTS.has(event)) {
+    const d = payload.payload?.dispute?.entity;
+    if (!d?.id || !d.payment_id || !d.amount) {
+      return NextResponse.json({ status: "rejected", reason: "missing_dispute" });
+    }
+    const result = await recordDispute(supabase, {
+      id: d.id, payment_id: d.payment_id, amount: d.amount, status: d.status ?? "open",
+    });
+    if (!result.ok) {
+      return result.retryable
+        ? NextResponse.json({ status: "deferred", reason: "ledger_unavailable" }, { status: 503 })
+        : NextResponse.json({ status: "ignored", reason: "unknown_payment" });
+    }
+    return NextResponse.json({ status: "ok", dispute: d.id });
   }
 
   let paymentId =
@@ -200,7 +281,17 @@ export const POST = withErrorHandling("payments/webhook", async (request: Reques
     return NextResponse.json({ status: "rejected", reason: "unsupported_interaction" });
   }
 
-  const supabase = getSupabaseServiceClient();
+  // The ledger records the money as soon as the capture is verified, whether
+  // or not the viewer's alert has been submitted yet.
+  const ledger = await recordCapturedPayment(supabase, {
+    payment: paymentResult.data,
+    orderId,
+    creatorId: validation.creatorId,
+    interactionType: validation.interactionType,
+  });
+  if (!ledger.ok && ledger.retryable) {
+    return NextResponse.json({ status: "deferred", reason: "ledger_unavailable" }, { status: 503 });
+  }
 
   const existingSubmissionId = await findSubmissionIdByPayment(supabase, paymentId);
   if (existingSubmissionId) {
@@ -283,4 +374,4 @@ export const POST = withErrorHandling("payments/webhook", async (request: Reques
     recovered: true,
     submission_id: result.submission.id,
   });
-});
+}

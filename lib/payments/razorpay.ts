@@ -99,6 +99,8 @@ export interface RazorpayOrderNotes {
   interaction_type?: string;
   min_price?: string;
   charged_amount?: string;
+  /** Signed-in viewer who created the order, set server-side. */
+  viewer_user_id?: string;
 }
 
 export interface RazorpayOrder {
@@ -121,6 +123,10 @@ export interface RazorpayPayment {
   captured: boolean;
   /** Unix seconds. */
   created_at?: number;
+  /** Razorpay's fee in paise, including GST, once captured. */
+  fee?: number | null;
+  /** The GST portion of `fee`, in paise. */
+  tax?: number | null;
 }
 
 export function createOrder(params: {
@@ -129,6 +135,8 @@ export function createOrder(params: {
   creatorUsername: string;
   interactionType: InteractionType;
   minimumPriceRupees: number;
+  /** Signed-in viewer, from the server session. Omitted for guests. */
+  viewerUserId?: string | null;
 }): Promise<GatewayResult<RazorpayOrder>> {
   const receipt = `sl_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
 
@@ -147,6 +155,7 @@ export function createOrder(params: {
         interaction_type: params.interactionType,
         min_price: String(params.minimumPriceRupees),
         charged_amount: String(Math.round(params.amountInPaise / 100)),
+        ...(params.viewerUserId ? { viewer_user_id: params.viewerUserId } : {}),
       } satisfies RazorpayOrderNotes,
     }),
   });
