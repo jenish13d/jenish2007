@@ -5,7 +5,7 @@ BEGIN PERFORM set_config('request.jwt.claims', json_build_object('sub', uid, 'ro
 CREATE OR REPLACE FUNCTION pg_temp.eq(label text, got bigint, want bigint) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN IF got IS DISTINCT FROM want THEN RAISE EXCEPTION '%: got %, want %', label, got, want; END IF; END $$;
 
-UPDATE public.platform_settings SET settlement_hold_days = 0, platform_fee_bps = 1000, gateway_fee_bearer = 'platform', min_payout_paise = 1000;
+UPDATE public.platform_settings SET settlement_hold_days = 0, platform_fee_bps = 1000, gateway_fee_bearer = 'platform', min_payout_paise = 1000, payouts_enabled = true;
 INSERT INTO auth.users (id, email) VALUES ('33333333-3333-3333-3333-333333333333','viewer@example.test');
 INSERT INTO public.creator_profiles (id, creator_name) VALUES ('33333333-3333-3333-3333-333333333333','Viewer') ON CONFLICT DO NOTHING;
 

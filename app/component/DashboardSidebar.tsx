@@ -12,6 +12,7 @@ const NAV = [
   { label: "Creator Page", icon: "sparkle", href: "/creator" },
   { label: "Interactions", icon: "bolt", href: "" }, // opens the interactions modal
   { label: "Earnings", icon: "rupee", href: "/dashboard/earnings" },
+  { label: "Payouts", icon: "rupee", href: "/dashboard/payouts" },
   { label: "Analytics", icon: "analytics", href: "/dashboard/analytics" },
   { label: "Soundboard", icon: "sound", href: "/dashboard/soundboard" },
   { label: "Stream Kit", icon: "sparkle", href: "/dashboard/stream-kit" },

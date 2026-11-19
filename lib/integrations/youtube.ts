@@ -1,9 +1,10 @@
 import crypto from "node:crypto";
 
 import { google } from "googleapis";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { serverEnv } from "../env.ts";
+import { openNullable, sealNullable } from "../security/token-crypto.ts";
+import { getSupabaseServiceClient } from "../supabase/service.ts";
 
 /**
  * YouTube OAuth and Data API helpers.
@@ -106,6 +107,57 @@ export async function fetchOwnChannel(
   };
 }
 
+type StoredTokens = {
+  access_token: string | null;
+  refresh_token: string | null;
+  expiry_date?: number | null;
+};
+
+const aad = (kind: "access" | "refresh", creatorId: string) =>
+  `youtube:${kind}:${creatorId}`;
+
+/**
+ * Persists a creator's tokens, encrypted at rest.
+ *
+ * Uses the service-role client: `creator_youtube_tokens` grants nothing to
+ * `authenticated`, so tokens are unreadable from any browser session even if a
+ * policy were misconfigured. The caller MUST have authenticated `creatorId`
+ * from the server session first.
+ */
+export async function storeYoutubeTokens(
+  creatorId: string,
+  tokens: StoredTokens,
+  keepRefreshToken?: string | null,
+): Promise<{ error: string | null }> {
+  const key = serverEnv.tokenEncryptionKey();
+  const refresh = tokens.refresh_token ?? keepRefreshToken ?? null;
+  const { error } = await getSupabaseServiceClient()
+    .from("creator_youtube_tokens")
+    .upsert(
+      {
+        creator_id: creatorId,
+        access_token: sealNullable(tokens.access_token, key, aad("access", creatorId)),
+        refresh_token: sealNullable(refresh, key, aad("refresh", creatorId)),
+        expires_at: tokens.expiry_date
+          ? new Date(tokens.expiry_date).toISOString()
+          : null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "creator_id" },
+    );
+  return { error: error?.message ?? null };
+}
+
+/** Removes stored tokens and marks the channel disconnected. */
+export async function clearYoutubeConnection(creatorId: string): Promise<void> {
+  const service = getSupabaseServiceClient();
+  await service.from("creator_youtube_tokens").delete().eq("creator_id", creatorId);
+  await service
+    .from("creator_profiles")
+    .update({ youtube_connected: false })
+    .eq("id", creatorId);
+}
+
 /**
  * Loads a creator's stored tokens and returns an authorised client, refreshing
  * the access token when it has expired.
@@ -113,12 +165,14 @@ export async function fetchOwnChannel(
  * Returns `null` when the creator has not connected a channel, or when the
  * refresh token has been revoked — in which case the stored row is cleared so
  * the dashboard prompts a reconnect rather than retrying a dead token forever.
+ *
+ * The caller MUST pass a creator id taken from the authenticated server
+ * session; this reads through the service-role client.
  */
 export async function authorizedClientForCreator(
-  supabase: SupabaseClient,
   creatorId: string,
 ): Promise<ReturnType<typeof createOAuthClient> | null> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseServiceClient()
     .from("creator_youtube_tokens")
     .select("access_token, refresh_token, expires_at")
     .eq("creator_id", creatorId)
@@ -132,47 +186,48 @@ export async function authorizedClientForCreator(
     return null;
   }
 
+  let accessToken: string | null;
+  let refreshToken: string | null;
+  try {
+    const key = serverEnv.tokenEncryptionKey();
+    accessToken = openNullable(data.access_token, key, aad("access", creatorId));
+    refreshToken = openNullable(data.refresh_token, key, aad("refresh", creatorId));
+  } catch (decryptError) {
+    console.error("[youtube] token decrypt failed:", decryptError);
+    return null;
+  }
+
   const client = createOAuthClient();
   client.setCredentials({
-    access_token: data.access_token ?? undefined,
-    refresh_token: data.refresh_token ?? undefined,
+    access_token: accessToken ?? undefined,
+    refresh_token: refreshToken ?? undefined,
     expiry_date: data.expires_at ? new Date(data.expires_at).getTime() : undefined,
   });
 
   const expiresAt = data.expires_at ? new Date(data.expires_at).getTime() : 0;
-  const needsRefresh = !data.access_token || expiresAt - Date.now() < 60_000;
+  const needsRefresh = !accessToken || expiresAt - Date.now() < 60_000;
 
   if (needsRefresh) {
-    if (!data.refresh_token) {
+    if (!refreshToken) {
       return null;
     }
     try {
       const { credentials } = await client.refreshAccessToken();
-      await supabase
-        .from("creator_youtube_tokens")
-        .update({
+      // Google does not always return a new refresh token; keep the old one.
+      await storeYoutubeTokens(
+        creatorId,
+        {
           access_token: credentials.access_token ?? null,
-          // Google does not always return a new refresh token; keep the old one
-          // when it does not.
-          refresh_token: credentials.refresh_token ?? data.refresh_token,
-          expires_at: credentials.expiry_date
-            ? new Date(credentials.expiry_date).toISOString()
-            : null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("creator_id", creatorId);
+          refresh_token: credentials.refresh_token ?? null,
+          expiry_date: credentials.expiry_date ?? null,
+        },
+        refreshToken,
+      );
     } catch (refreshError) {
       console.error("[youtube] refresh failed:", refreshError);
       // A revoked grant is permanent. Clearing the row turns an endless retry
       // loop into a visible "reconnect your channel" state.
-      await supabase
-        .from("creator_youtube_tokens")
-        .delete()
-        .eq("creator_id", creatorId);
-      await supabase
-        .from("creator_profiles")
-        .update({ youtube_connected: false })
-        .eq("id", creatorId);
+      await clearYoutubeConnection(creatorId);
       return null;
     }
   }

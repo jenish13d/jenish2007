@@ -38,7 +38,7 @@ export const GET = withErrorHandling("youtube/live", async (request: Request) =>
     return apiError("unauthorized", "Sign in to check your live status.");
   }
 
-  const auth = await authorizedClientForCreator(supabase, user.id);
+  const auth = await authorizedClientForCreator(user.id);
   if (!auth) {
     return apiSuccess({
       connected: false,

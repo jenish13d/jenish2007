@@ -7,8 +7,10 @@ import {
   createOAuthClient,
   fetchOwnChannel,
   oauthStateMatches,
+  storeYoutubeTokens,
 } from "@/lib/integrations/youtube";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseServiceClient } from "@/lib/supabase/service";
 
 /**
  * GET /api/auth/youtube/callback
@@ -99,32 +101,34 @@ export async function GET(request: Request) {
     return failure(base, "no_channel");
   }
 
-  // Tokens go in their own table, which is RLS-isolated to the owning creator
-  // and never read by any public path.
-  const { error: tokenError } = await supabase
-    .from("creator_youtube_tokens")
-    .upsert(
-      {
-        creator_id: user.id,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token ?? null,
-        expires_at: tokens.expiry_date
-          ? new Date(tokens.expiry_date).toISOString()
-          : null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "creator_id" },
-    );
-
-  if (tokenError) {
-    console.error("[youtube/callback] token store failed:", tokenError.message);
+  // Tokens and the cached channel fields are written with the service-role
+  // client. The live database grants `authenticated` no access to
+  // creator_youtube_tokens or to the youtube_* profile columns (so a browser
+  // session can never forge a "connected" channel), which is why the previous
+  // cookie-client writes always failed. Authorisation is the verified session
+  // user plus the matching OAuth state cookie above.
+  let stored: { error: string | null };
+  try {
+    stored = await storeYoutubeTokens(user.id, {
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token ?? null,
+      expiry_date: tokens.expiry_date ?? null,
+    });
+  } catch (error) {
+    if (error instanceof MissingConfigError) {
+      console.error("[youtube/callback]", error.message);
+      return failure(base, "not_configured");
+    }
+    throw error;
+  }
+  if (stored.error) {
+    console.error("[youtube/callback] token store failed:", stored.error);
     return failure(base, "token_store_failed");
   }
 
   // Channel display fields are cached on the profile so the public page does
-  // not call the YouTube API on every visit, which would burn quota and leak
-  // viewer traffic patterns to Google.
-  const { error: profileError } = await supabase
+  // not call the YouTube API on every visit.
+  const { error: profileError } = await getSupabaseServiceClient()
     .from("creator_profiles")
     .update({
       youtube_connected: true,

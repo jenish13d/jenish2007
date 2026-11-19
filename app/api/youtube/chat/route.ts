@@ -39,7 +39,7 @@ export const GET = withErrorHandling("youtube/chat", async (request: Request) =>
     return apiError("unauthorized", "Sign in to read your live chat.");
   }
 
-  const auth = await authorizedClientForCreator(supabase, user.id);
+  const auth = await authorizedClientForCreator(user.id);
   if (!auth) {
     return apiSuccess({
       connected: false,

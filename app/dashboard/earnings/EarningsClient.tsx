@@ -790,7 +790,7 @@ export default function EarningsClient() {
                 </div>
 
                 <div className="er-muted mt-0.5 text-xs">
-                  {isCurrentCycle ? "Automatic 15-day payout cycle" : "Historical 15-day payout cycle"}
+                  {isCurrentCycle ? "15-day earnings period · withdrawals on the Payouts page" : "Historical 15-day earnings period"}
                 </div>
               </div>
             </div>
@@ -1226,7 +1226,7 @@ export default function EarningsClient() {
 
                 <div>
                   <h3 className="text-base font-medium tracking-tight text-white sm:text-lg">
-                    15-Day Payout Cycles
+                    15-Day Earnings Periods
                   </h3>
 
                   <p className="er-muted text-xs">

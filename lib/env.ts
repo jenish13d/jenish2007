@@ -114,6 +114,29 @@ export const serverEnv = {
   googleClientId: () => required("GOOGLE_CLIENT_ID"),
   googleClientSecret: () => required("GOOGLE_CLIENT_SECRET"),
 
+  twitchClientId: () => required("TWITCH_CLIENT_ID"),
+  twitchClientSecret: () => required("TWITCH_CLIENT_SECRET"),
+  kickClientId: () => required("KICK_CLIENT_ID"),
+  kickClientSecret: () => required("KICK_CLIENT_SECRET"),
+
+  /**
+   * AES-256-GCM key (64 hex characters) for platform OAuth tokens at rest.
+   * Independent of every other secret.
+   */
+  tokenEncryptionKey: () => {
+    const value = required(
+      "TOKEN_ENCRYPTION_KEY",
+      `Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`,
+    );
+    if (!/^[0-9a-fA-F]{64}$/.test(value)) {
+      throw new MissingConfigError(
+        "TOKEN_ENCRYPTION_KEY",
+        "It must be exactly 64 hexadecimal characters (32 random bytes).",
+      );
+    }
+    return value;
+  },
+
   appUrl: () => optional("NEXT_PUBLIC_APP_URL") ?? "http://localhost:3000",
 } as const;
 
@@ -131,5 +154,10 @@ export function integrationStatus() {
       optional("GOOGLE_CLIENT_ID") && optional("GOOGLE_CLIENT_SECRET"),
     ),
     serviceRole: Boolean(optional("SUPABASE_SERVICE_ROLE_KEY")),
+    twitch: Boolean(
+      optional("TWITCH_CLIENT_ID") && optional("TWITCH_CLIENT_SECRET"),
+    ),
+    kick: Boolean(optional("KICK_CLIENT_ID") && optional("KICK_CLIENT_SECRET")),
+    tokenEncryption: Boolean(optional("TOKEN_ENCRYPTION_KEY")),
   };
 }
