@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 /**
  * Shown instead of an endless loader when a page cannot load its data.
  * Matches the StreamLounge dark-navy / mint palette.
@@ -25,9 +27,9 @@ export default function LoadError({
           >
             Try again
           </button>
-          <a href="/" className="rounded-xl border border-white/15 px-5 py-3 text-sm text-white/80 hover:text-white">
+          <Link href="/" className="rounded-xl border border-white/15 px-5 py-3 text-sm text-white/80 hover:text-white">
             Go to home
-          </a>
+          </Link>
         </div>
       </div>
     </main>
