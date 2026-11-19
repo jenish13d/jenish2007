@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   DEFAULT_OVERLAY_THEME,
@@ -16,9 +16,58 @@ type OverlayEvent = {
   interaction_type: string;
   sender_name: string;
   message: string;
-  amount: number;
+  /** null when the creator hides amounts. */
+  amount: number | null;
   metadata?: Record<string, unknown>;
+  announce?: boolean;
+  announcement?: string;
 };
+
+type OverlayPrefs = {
+  alert_duration_ms: number;
+  alert_position: string;
+  sound_alerts_enabled: boolean;
+  animated_alerts_enabled: boolean;
+  announcer_muted: boolean;
+  announcer_voice: string;
+  announcer_rate: number;
+  announcer_volume: number;
+};
+
+// Flex alignment for each configurable alert position.
+const POSITION_STYLE: Record<string, { alignItems: string; justifyContent: string }> = {
+  "top-left": { alignItems: "flex-start", justifyContent: "flex-start" },
+  "top-center": { alignItems: "flex-start", justifyContent: "center" },
+  "top-right": { alignItems: "flex-start", justifyContent: "flex-end" },
+  center: { alignItems: "center", justifyContent: "center" },
+  "bottom-left": { alignItems: "flex-end", justifyContent: "flex-start" },
+  "bottom-center": { alignItems: "flex-end", justifyContent: "center" },
+  "bottom-right": { alignItems: "flex-end", justifyContent: "flex-end" },
+};
+
+/** A short two-note chime made with Web Audio, so no audio file is needed. */
+function playChime(volume: number) {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    [880, 1318.5].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      const start = ctx.currentTime + i * 0.12;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.18 * volume, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.45);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.5);
+    });
+    window.setTimeout(() => ctx.close(), 1200);
+  } catch {
+    /* Audio unavailable: the visual alert still shows. */
+  }
+}
 
 /**
  * Extracts a log-safe message from an unknown caught value.
@@ -59,6 +108,11 @@ function OBSOverlayInner() {
   const [result, setResult] = useState("");
   const [keyRejected, setKeyRejected] = useState(false);
 
+  const [prefs, setPrefs] = useState<OverlayPrefs | null>(null);
+  const prefsRef = useRef<OverlayPrefs | null>(null);
+  const announcerAudioRef = useRef<HTMLAudioElement | null>(null);
+  const spokenRef = useRef<Set<string>>(new Set());
+
   const busyRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -98,6 +152,11 @@ function OBSOverlayInner() {
           setCreatorTheme(resolveOverlayTheme(data.theme));
         }
 
+        if (data?.preferences) {
+          prefsRef.current = data.preferences;
+          setPrefs(data.preferences);
+        }
+
         if (data?.event) {
           await playEvent(data.event);
         }
@@ -109,9 +168,28 @@ function OBSOverlayInner() {
     const interval = setInterval(checkEvent, 1000);
     checkEvent();
 
+    // While an alert is playing the main poll pauses; a light read-only poll
+    // still picks up an emergency mute and silences the announcer at once.
+    const peek = setInterval(async () => {
+      if (stopped || !busyRef.current) return;
+      try {
+        const r = await fetch(`/api/overlay/event?key=${encodeURIComponent(overlayKey)}&peek=1`, { cache: "no-store" });
+        const d = await r.json();
+        if (d?.preferences) {
+          prefsRef.current = d.preferences;
+          setPrefs(d.preferences);
+          if (d.preferences.announcer_muted) stopAnnouncer();
+        }
+      } catch {
+        /* ignore */
+      }
+    }, 2000);
+
     return () => {
       stopped = true;
       clearInterval(interval);
+      clearInterval(peek);
+      stopAnnouncer();
 
       if (timerRef.current) {
         clearTimeout(timerRef.current);
@@ -261,6 +339,18 @@ function OBSOverlayInner() {
       playbackError = sanitized;
     }
 
+    const current = prefsRef.current;
+    if (current) duration = Math.max(duration, current.alert_duration_ms);
+    if (current?.sound_alerts_enabled && type !== "audio" && type !== "soundboard") {
+      playChime(current.announcer_volume ?? 1);
+    }
+    if (incoming.announce && incoming.announcement && !spokenRef.current.has(incoming.id)) {
+      spokenRef.current.add(incoming.id);
+      if (spokenRef.current.size > 200) spokenRef.current.clear();
+      const spokenMs = await announce(incoming);
+      duration = Math.max(duration, Math.min(spokenMs + 1200, 30000));
+    }
+
     timerRef.current = setTimeout(async () => {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -283,6 +373,62 @@ function OBSOverlayInner() {
         busyRef.current = false;
       }, 300);
     }, duration);
+  }
+
+  function stopAnnouncer() {
+    try {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    } catch {
+      /* ignore */
+    }
+    if (announcerAudioRef.current) {
+      announcerAudioRef.current.pause();
+      announcerAudioRef.current = null;
+    }
+  }
+
+  /**
+   * Speaks the server-built announcement. Uses the browser's speech engine
+   * when it has voices; otherwise (typical in OBS/Streamlabs) falls back to
+   * the server voice. Resolves with roughly how long it will speak, so the
+   * alert stays up until the announcement ends. Never blocks for long.
+   */
+  async function announce(incoming: OverlayEvent): Promise<number> {
+    const current = prefsRef.current;
+    if (!incoming.announcement || current?.announcer_muted) return 0;
+    const text = incoming.announcement;
+    const estimate = Math.round((text.split(/\s+/).length / 2.6) * 1000 / (current?.announcer_rate || 1));
+
+    const synth = typeof window !== "undefined" && "speechSynthesis" in window ? window.speechSynthesis : null;
+    const voices = synth?.getVoices() ?? [];
+    if (synth && voices.length > 0) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = current?.announcer_rate ?? 1;
+      utterance.volume = current?.announcer_volume ?? 1;
+      const voice = voices.find((v) => v.name === current?.announcer_voice);
+      if (voice) utterance.voice = voice;
+      synth.cancel();
+      synth.speak(utterance);
+      return estimate;
+    }
+
+    if (!incoming.token) return 0;
+    try {
+      const response = await fetch(
+        `/api/overlay/announce?id=${encodeURIComponent(incoming.id)}&token=${encodeURIComponent(incoming.token)}`,
+        { cache: "no-store" },
+      );
+      if (!response.ok || response.status === 204) return 0;
+      const blob = await response.blob();
+      const audio = new Audio(URL.createObjectURL(blob));
+      audio.volume = current?.announcer_volume ?? 1;
+      announcerAudioRef.current = audio;
+      await audio.play();
+      return Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration * 1000 : estimate;
+    } catch {
+      // No voice available at all: the on-screen alert is the fallback.
+      return 0;
+    }
   }
 
   async function playAudio(url: string, onError?: (err: Error) => void) {
@@ -457,8 +603,9 @@ function OBSOverlayInner() {
         background: "transparent",
         overflow: "hidden",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        ...(POSITION_STYLE[prefs?.alert_position ?? "center"] ?? POSITION_STYLE.center),
+        padding: "24px",
+        boxSizing: "border-box",
         pointerEvents: "none",
         fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
@@ -684,7 +831,7 @@ function OBSOverlayInner() {
                 {event.sender_name || "Anonymous"}
               </span>
 
-              {event.amount > 0 && (
+              {event.amount != null && event.amount > 0 && (
                 <span
                   style={{
                     fontSize: "11px",
@@ -853,6 +1000,84 @@ function OBSOverlayInner() {
   );
 }
 
+/**
+ * One browser source URL per view:
+ *   /obs?key=…               alerts + announcer (claims alerts; add once)
+ *   /obs?key=…&view=qr       stream-ready QR code for the creator's link
+ *   /obs?key=…&view=ticker   recent superchats (read-only)
+ * The extra views never claim alerts, so adding them cannot steal an alert
+ * from the main overlay.
+ */
+function OverlayRouter() {
+  const params = useSearchParams();
+  const view = params.get("view");
+  if (view === "qr" || view === "ticker") return <AuxOverlay view={view} overlayKey={params.get("key") ?? ""} />;
+  return <OBSOverlayInner />;
+}
+
+function AuxOverlay({ view, overlayKey }: { view: "qr" | "ticker"; overlayKey: string }) {
+  const [username, setUsername] = useState<string | null>(null);
+  const [items, setItems] = useState<{ id: string; sender_name: string; amount: number | null; message: string }[]>([]);
+  const [rejected, setRejected] = useState(false);
+
+  useEffect(() => {
+    if (!overlayKey) return;
+    let stopped = false;
+    const load = async () => {
+      try {
+        const endpoint = view === "qr"
+          ? `/api/overlay/event?key=${encodeURIComponent(overlayKey)}&peek=1`
+          : `/api/overlay/recent?key=${encodeURIComponent(overlayKey)}`;
+        const r = await fetch(endpoint, { cache: "no-store" });
+        if (r.status === 401) { setRejected(true); stopped = true; return; }
+        const d = await r.json();
+        if (stopped) return;
+        if (view === "qr") setUsername(d?.creator?.username ?? null);
+        else setItems(Array.isArray(d?.items) ? d.items.slice(0, 5) : []);
+      } catch {
+        /* keep last state */
+      }
+    };
+    load();
+    const t = setInterval(load, view === "qr" ? 60_000 : 8_000);
+    return () => { stopped = true; clearInterval(t); };
+  }, [view, overlayKey]);
+
+  const shell: CSSProperties = {
+    width: "100vw", height: "100vh", background: "transparent", overflow: "hidden", display: "flex",
+    alignItems: "center", justifyContent: "center", fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+  };
+  if (!overlayKey || rejected) {
+    return <main style={shell}><p style={{ color: "#fecaca", background: "rgba(10,14,31,.92)", padding: 16, borderRadius: 12 }}>This overlay URL is not valid. Copy a fresh one from StreamLounge.</p></main>;
+  }
+  if (view === "qr") {
+    if (!username) return <main style={shell} />;
+    return (
+      <main style={shell}>
+        <div style={{ background: "rgba(10,33,55,.88)", border: "1px solid rgba(94,234,212,.35)", borderRadius: 24, padding: 18, textAlign: "center", color: "#fff", boxShadow: "0 20px 60px rgba(0,0,0,.35)" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`/api/qr/${encodeURIComponent(username)}?size=360`} alt="" width={240} height={240} style={{ borderRadius: 12, display: "block" }} />
+          <p style={{ margin: "12px 0 0", fontSize: 15, fontWeight: 600 }}><span style={{ color: "#6CCEB0" }}>ϟ</span> Stream<span style={{ color: "#C7B8F0" }}>Lounge</span></p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,.7)" }}>Scan to send a superchat</p>
+        </div>
+      </main>
+    );
+  }
+  return (
+    <main style={{ ...shell, alignItems: "flex-end", justifyContent: "flex-start", padding: 20, boxSizing: "border-box" }}>
+      <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8, maxWidth: 420 }}>
+        {items.map((item) => (
+          <li key={item.id} style={{ background: "rgba(10,33,55,.85)", border: "1px solid rgba(167,139,250,.3)", borderRadius: 14, padding: "8px 14px", color: "#fff", fontSize: 14 }}>
+            <strong style={{ color: "#6CCEB0" }}>{item.sender_name}</strong>
+            {item.amount != null && <span style={{ color: "#C7B8F0" }}> · ₹{item.amount}</span>}
+            {item.message && <div style={{ color: "rgba(255,255,255,.8)", fontSize: 13, marginTop: 2, overflowWrap: "anywhere" }}>{item.message}</div>}
+          </li>
+        ))}
+      </ul>
+    </main>
+  );
+}
+
 export default function OBSOverlayPage() {
   return (
     <Suspense
@@ -867,7 +1092,7 @@ export default function OBSOverlayPage() {
         />
       }
     >
-      <OBSOverlayInner />
+      <OverlayRouter />
     </Suspense>
   );
 }

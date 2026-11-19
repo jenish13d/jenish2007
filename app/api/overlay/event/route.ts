@@ -13,6 +13,7 @@ import {
   verifyOverlayToken,
 } from "@/lib/overlay/tokens";
 import { resolveOverlayTheme } from "@/lib/overlay/themes";
+import { announcementFor, loadOverlayPreferences, overlayHeartbeat } from "@/lib/overlay/preferences";
 import {
   RATE_LIMITS,
   clientIdentifier,
@@ -100,6 +101,17 @@ export const GET = withErrorHandling("overlay/event#GET", async (request: Reques
   }
 
   const theme = resolveOverlayTheme(profile.overlay_theme);
+  const [preferences] = await Promise.all([
+    loadOverlayPreferences(supabase, profile.id),
+    overlayHeartbeat(supabase, profile.id),
+  ]);
+  const creator = { username: profile.username };
+
+  // ?peek=1 returns settings without claiming an alert, so a busy overlay can
+  // still pick up an emergency mute within a couple of seconds.
+  if (url.searchParams.get("peek") === "1") {
+    return apiSuccess({ event: null, theme, preferences, creator });
+  }
 
   // Return anything wedged in `processing` to the queue before claiming, so a
   // crashed browser source does not lose the alert.
@@ -111,7 +123,7 @@ export const GET = withErrorHandling("overlay/event#GET", async (request: Reques
 
   const claimed = await claimNextOverlayEvent(supabase, profile.id);
   if (!claimed) {
-    return apiSuccess({ event: null, theme });
+    return apiSuccess({ event: null, theme, preferences, creator });
   }
 
   /* ---------------------------------------------------------------------- */
@@ -179,17 +191,31 @@ export const GET = withErrorHandling("overlay/event#GET", async (request: Reques
 
   const token = generateOverlayToken(claimed.id, claimed.creator_id);
 
+  const amountPaise = Math.round(Number(claimed.amount ?? 0) * 100);
+  const announcement = announcementFor(preferences, {
+    senderName: claimed.sender_name || "Anonymous",
+    amountPaise,
+    message: claimed.message ?? null,
+    interactionType: claimed.interaction_type,
+  });
+
   return apiSuccess({
     event: {
       id: claimed.id,
       token,
       interaction_type: claimed.interaction_type,
-      sender_name: claimed.sender_name || "Anonymous",
+      // Hidden server-side so the browser source never receives what the
+      // creator chose not to show.
+      sender_name: preferences.show_sender ? claimed.sender_name || "Anonymous" : "A viewer",
       message: claimed.message ?? "",
-      amount: Number(claimed.amount ?? 0),
+      amount: preferences.show_amount ? Number(claimed.amount ?? 0) : null,
       metadata,
+      announce: announcement.announce,
+      announcement: announcement.text,
     },
     theme,
+    preferences,
+    creator,
   });
 });
 

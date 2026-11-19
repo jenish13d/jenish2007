@@ -33,8 +33,9 @@ export const updatePreferencesSchema = z
     announcer_read_emojis: z.boolean(),
     announcer_read_message: z.boolean(),
     announcer_min_paise: z.number().int().min(0).max(10_000_000),
+    // zod 4: partialRecord, because record() with enum keys requires every key.
     overlay_overrides: z
-      .record(
+      .partialRecord(
         z.enum(["obs", "streamlabs", "streamyard"]),
         z.object({
           scale: z.number().min(0.5).max(2).optional(),
