@@ -14,6 +14,7 @@ const NAV = [
   { label: "Earnings", icon: "rupee", href: "/dashboard/earnings" },
   { label: "Analytics", icon: "analytics", href: "/dashboard/analytics" },
   { label: "Soundboard", icon: "sound", href: "/dashboard/soundboard" },
+  { label: "Stream Kit", icon: "sparkle", href: "/dashboard/stream-kit" },
   { label: "Manage Interactions", icon: "settings", href: "/dashboard/interactions" },
 ];
 

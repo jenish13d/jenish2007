@@ -1055,7 +1055,6 @@ function AuxOverlay({ view, overlayKey }: { view: "qr" | "ticker"; overlayKey: s
     return (
       <main style={shell}>
         <div style={{ background: "rgba(10,33,55,.88)", border: "1px solid rgba(94,234,212,.35)", borderRadius: 24, padding: 18, textAlign: "center", color: "#fff", boxShadow: "0 20px 60px rgba(0,0,0,.35)" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`/api/qr/${encodeURIComponent(username)}?size=360`} alt="" width={240} height={240} style={{ borderRadius: 12, display: "block" }} />
           <p style={{ margin: "12px 0 0", fontSize: 15, fontWeight: 600 }}><span style={{ color: "#6CCEB0" }}>ϟ</span> Stream<span style={{ color: "#C7B8F0" }}>Lounge</span></p>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,.7)" }}>Scan to send a superchat</p>

@@ -191,7 +191,6 @@ function MfaGate({ enrolled, onVerified, notify }: { enrolled: boolean; onVerifi
       {qr && (
         <div className="mt-6 rounded-2xl bg-white p-4">
           {/* Supabase returns the QR as an SVG data URL. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qr} alt="Scan this QR code with your authenticator app" className="mx-auto h-48 w-48" />
         </div>
       )}
