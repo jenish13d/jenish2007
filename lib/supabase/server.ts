@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 import { serverEnv } from "../env.ts";
+import { createTimeoutFetch } from "./timeout-fetch.ts";
 
 /**
  * Request-scoped Supabase client bound to the caller's session cookies.
@@ -25,6 +26,7 @@ export async function createSupabaseServerClient() {
     serverEnv.supabaseUrl(),
     serverEnv.supabasePublishableKey(),
     {
+      global: { fetch: createTimeoutFetch(10_000) },
       cookies: {
         getAll() {
           return cookieStore.getAll();

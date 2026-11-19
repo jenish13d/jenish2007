@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { loginUrl, resolveClientAuth } from "@/lib/supabase/client-auth";
 import DashboardSidebar from "@/app/component/DashboardSidebar";
 import StreamLoader from "@/app/component/StreamLoader";
 import {
@@ -438,16 +439,18 @@ export default function AnalyticsClient() {
       setLoading(true);
       setError("");
 
-      const { data: authData, error: authError } = await supabase.auth.getUser();
+      const auth = await resolveClientAuth();
 
-      if (authError) throw authError;
-
-      const user = authData.user;
-
-      if (!user) {
-        setError("Please login to view analytics.");
+      if (auth.status === "signed_out") {
+        router.replace(loginUrl("/dashboard/analytics"));
         return;
       }
+      if (auth.status === "error") {
+        setError(auth.message);
+        return;
+      }
+
+      const user = auth.user;
 
       setEmail(user.email || "");
       setUserId(user.id);
@@ -478,7 +481,7 @@ export default function AnalyticsClient() {
     } finally {
       setLoading(false);
     }
-  }, [fetchSubmissionsForRange, timeRange]);
+  }, [fetchSubmissionsForRange, timeRange, router]);
 
   useEffect(() => {
     loadInitial();

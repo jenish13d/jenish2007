@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import DashboardSidebar from "@/app/component/DashboardSidebar";
+import LoadError from "@/app/component/LoadError";
 import StreamLoader from "@/app/component/StreamLoader";
+import { loginUrl, resolveClientAuth } from "@/lib/supabase/client-auth";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 import { STUDIO_CSS } from "./theme";
@@ -21,39 +23,55 @@ export function d(ms: number): CSSProperties {
 
 export type StudioSession = { userId: string; creatorName: string; email: string };
 
-/** Loads the signed-in creator, redirecting to /login when there is none. */
+/**
+ * Loads the signed-in creator. A missing session goes to /login; a network or
+ * server failure becomes a retryable error instead of an endless loader.
+ */
 export function useStudioSession(nextPath: string) {
   const router = useRouter();
   const [session, setSession] = useState<StudioSession | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const supabase = getSupabaseBrowserClient();
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) {
-        router.replace(`/login?next=${encodeURIComponent(nextPath)}`);
+      const auth = await resolveClientAuth();
+      if (cancelled) return;
+      if (auth.status === "signed_out") {
+        router.replace(loginUrl(nextPath));
         return;
       }
-      const { data: profile } = await supabase
-        .from("creator_profiles")
-        .select("creator_name")
-        .eq("id", data.user.id)
-        .maybeSingle();
+      if (auth.status === "error") {
+        setAuthError(auth.message);
+        return;
+      }
+      let creatorName = "Creator";
+      try {
+        const { data: profile } = await getSupabaseBrowserClient()
+          .from("creator_profiles")
+          .select("creator_name")
+          .eq("id", auth.user.id)
+          .maybeSingle();
+        creatorName = profile?.creator_name || creatorName;
+      } catch {
+        // The name is cosmetic; never block the page on it.
+      }
       if (!cancelled) {
-        setSession({
-          userId: data.user.id,
-          creatorName: profile?.creator_name || "Creator",
-          email: data.user.email || "",
-        });
+        setSession({ userId: auth.user.id, creatorName, email: auth.user.email || "" });
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [router, nextPath]);
+  }, [router, nextPath, attempt]);
 
-  return session;
+  const retryAuth = useCallback(() => {
+    setAuthError(null);
+    setAttempt((n) => n + 1);
+  }, []);
+
+  return { session, authError, retryAuth };
 }
 
 export function StudioShell({
@@ -65,10 +83,14 @@ export function StudioShell({
   subtitle,
   aside,
   toast,
+  authError,
+  onRetry,
   children,
 }: {
   active: string;
   session: StudioSession | null;
+  authError?: string | null;
+  onRetry?: () => void;
   eyebrow: string;
   title: string;
   accent: string;
@@ -78,6 +100,10 @@ export function StudioShell({
   children: ReactNode;
 }) {
   const router = useRouter();
+
+  if (authError) {
+    return <LoadError message={authError} onRetry={onRetry ?? (() => window.location.reload())} />;
+  }
 
   if (!session) {
     return <StreamLoader size="sm" messages={["Opening your studio…", "Almost there…"]} />;

@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { formatRupees } from "@/app/component/studio/StudioShell";
 import { STUDIO_CSS } from "@/app/component/studio/theme";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { loginUrl, resolveClientAuth } from "@/lib/supabase/client-auth";
+import LoadError from "@/app/component/LoadError";
 
 type Points = { balance: number; points_per_redemption: number; redemption_value_paise: number; enabled: boolean };
 type Entry = { id: number; kind: string; points: number; note: string | null; created_at: string };
@@ -24,10 +26,13 @@ export default function MeClient() {
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
   const fetchAll = useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) return null;
+    const auth = await resolveClientAuth();
+    if (auth.status !== "signed_in") return auth;
     const [p, e, pay] = await Promise.all([
       supabase.rpc("sl_my_points"),
       supabase.from("loungepoints_ledger").select("id, kind, points, note, created_at").order("created_at", { ascending: false }).limit(50),
@@ -35,25 +40,31 @@ export default function MeClient() {
         .eq("viewer_user_id", auth.user.id).order("captured_at", { ascending: false }).limit(50),
     ]);
     const row = Array.isArray(p.data) ? (p.data[0] as Points | undefined) : undefined;
-    return { points: row ?? null, entries: (e.data ?? []) as Entry[], payments: (pay.data ?? []) as Paid[] };
+    return { status: "loaded" as const, points: row ?? null, entries: (e.data ?? []) as Entry[], payments: (pay.data ?? []) as Paid[] };
   }, []);
 
   useEffect(() => {
     let alive = true;
     fetchAll().then((result) => {
       if (!alive) return;
-      if (!result) {
-        router.replace("/login?next=/me");
+      if (result.status === "signed_out") {
+        router.replace(loginUrl("/me"));
+        return;
+      }
+      if (result.status === "error") {
+        setLoadError(result.message);
         return;
       }
       setPoints(result.points);
       setEntries(result.entries);
       setPayments(result.payments);
+    }).catch(() => {
+      if (alive) setLoadError("We couldn't reach the server. Check your connection and try again.");
     });
     return () => {
       alive = false;
     };
-  }, [fetchAll, router]);
+  }, [fetchAll, router, attempt]);
 
   async function redeem() {
     setBusy(true);
@@ -65,13 +76,25 @@ export default function MeClient() {
     }
     setMessage("Redemption requested. It will be applied once reward checkout opens.");
     const result = await fetchAll();
-    if (result) {
+    if (result.status === "loaded") {
       setPoints(result.points);
       setEntries(result.entries);
     }
   }
 
   const per = points?.points_per_redemption ?? 1000;
+
+  if (loadError) {
+    return (
+      <LoadError
+        message={loadError}
+        onRetry={() => {
+          setLoadError(null);
+          setAttempt((n) => n + 1);
+        }}
+      />
+    );
+  }
   const balance = points?.balance ?? 0;
   const progress = Math.max(0, Math.min(100, (balance / per) * 100));
 

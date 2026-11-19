@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import DashboardSidebar from "@/app/component/DashboardSidebar";
 import StreamLoader from "@/app/component/StreamLoader";
+import LoadError from "@/app/component/LoadError";
+import { loginUrl, resolveClientAuth } from "@/lib/supabase/client-auth";
 
 type Profile = {
   creator_name: string;
@@ -93,6 +95,7 @@ export default function CreatorPageClient() {
   const [profile, setProfile] = useState<Profile>(emptyProfile);
   const [userEmail, setUserEmail] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -208,10 +211,23 @@ export default function CreatorPageClient() {
   }
 
   async function loadProfile() {
-    const { data: auth } = await supabase.auth.getUser();
+    try {
+      await loadProfileInner();
+    } catch (err) {
+      console.error("Creator profile load failed:", err);
+      setLoadError("We couldn't reach the server. Check your connection and try again.");
+    }
+  }
 
-    if (!auth.user) {
-      router.push("/login");
+  async function loadProfileInner() {
+    const auth = await resolveClientAuth();
+
+    if (auth.status === "signed_out") {
+      router.replace(loginUrl("/creator"));
+      return;
+    }
+    if (auth.status === "error") {
+      setLoadError(auth.message);
       return;
     }
 
@@ -246,7 +262,11 @@ export default function CreatorPageClient() {
       .maybeSingle();
 
     if (error) {
+      // Never show an empty form on a failed load: saving it would wipe the
+      // creator's real profile.
       console.error("Creator profile load error:", error);
+      setLoadError("Your profile couldn't be loaded. Try again.");
+      return;
     }
 
     if (data) {
@@ -290,11 +310,25 @@ export default function CreatorPageClient() {
     setSaving(true);
     setSaved(false);
     setSaveError(null);
+    try {
+      await saveProfileInner();
+    } catch (err) {
+      console.error("Profile save failed:", err);
+      setSaveError("Couldn't reach the server. Your changes weren't saved — try again.");
+      setSaving(false);
+    }
+  }
 
-    const { data: auth } = await supabase.auth.getUser();
+  async function saveProfileInner() {
+    const auth = await resolveClientAuth();
 
-    if (!auth.user) {
-      router.push("/login");
+    if (auth.status === "signed_out") {
+      router.replace(loginUrl("/creator"));
+      return;
+    }
+    if (auth.status === "error") {
+      setSaveError(auth.message);
+      setSaving(false);
       return;
     }
 
@@ -410,6 +444,19 @@ export default function CreatorPageClient() {
     const r = e.currentTarget.getBoundingClientRect();
     e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
     e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+  }
+
+  if (loadError) {
+    return (
+      <LoadError
+        message={loadError}
+        onRetry={() => {
+          setLoadError(null);
+          setLoading(true);
+          void loadProfile();
+        }}
+      />
+    );
   }
 
   if (loading) {

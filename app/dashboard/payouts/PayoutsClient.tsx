@@ -39,7 +39,7 @@ function hours(seconds: number) {
 const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
 
 export default function PayoutsClient() {
-  const session = useStudioSession("/dashboard/payouts");
+  const { session, authError, retryAuth } = useStudioSession("/dashboard/payouts");
   const [data, setData] = useState<Data | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
@@ -89,6 +89,8 @@ export default function PayoutsClient() {
     <StudioShell
       active="Payouts"
       session={session}
+      authError={authError}
+      onRetry={retryAuth}
       eyebrow="Creator studio"
       title="Earnings &"
       accent="payouts."

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import DashboardSidebar from "@/app/component/DashboardSidebar";
 import StreamLoader from "@/app/component/StreamLoader";
+import LoadError from "@/app/component/LoadError";
+import { loginUrl, resolveClientAuth } from "@/lib/supabase/client-auth";
 import {
   calculateEarningsTotals,
   money,
@@ -253,6 +255,7 @@ export default function DashboardClient() {
     useState(false);
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingInteractions, setLoadingInteractions] =
     useState(true);
 
@@ -310,16 +313,20 @@ export default function DashboardClient() {
   }
 
   async function loadDashboard() {
+    setLoadError(null);
     try {
-      const { data } =
-        await supabase.auth.getUser();
+      const auth = await resolveClientAuth();
 
-      if (!data.user) {
-        router.push("/login");
+      if (auth.status === "signed_out") {
+        router.replace(loginUrl("/dashboard"));
+        return;
+      }
+      if (auth.status === "error") {
+        setLoadError(auth.message);
         return;
       }
 
-      const user = data.user;
+      const user = auth.user;
 
       setEmail(user.email || "");
 
@@ -373,6 +380,7 @@ export default function DashboardClient() {
         "Dashboard loading error:",
         error
       );
+      setLoadError("We couldn't reach the server. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -800,6 +808,18 @@ export default function DashboardClient() {
     await supabase.auth.signOut();
 
     router.push("/login");
+  }
+
+  if (loadError) {
+    return (
+      <LoadError
+        message={loadError}
+        onRetry={() => {
+          setLoading(true);
+          void loadDashboard();
+        }}
+      />
+    );
   }
 
   if (loading) {

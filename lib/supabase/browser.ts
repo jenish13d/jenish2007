@@ -1,6 +1,7 @@
 import { createBrowserClient } from "@supabase/ssr";
 
 import { publicEnv } from "../env.ts";
+import { createTimeoutFetch } from "./timeout-fetch.ts";
 
 /**
  * Browser Supabase client. Carries the publishable key only, so every query it
@@ -17,6 +18,7 @@ export function getSupabaseBrowserClient() {
     client = createBrowserClient(
       publicEnv.supabaseUrl,
       publicEnv.supabasePublishableKey,
+      { global: { fetch: createTimeoutFetch() } },
     );
   }
   return client;

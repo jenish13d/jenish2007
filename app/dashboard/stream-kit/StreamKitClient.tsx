@@ -45,7 +45,7 @@ const GUIDES: Record<Tool, { name: string; steps: string[]; note: string }> = {
 };
 
 export default function StreamKitClient() {
-  const session = useStudioSession("/dashboard/stream-kit");
+  const { session, authError, retryAuth } = useStudioSession("/dashboard/stream-kit");
   const [username, setUsername] = useState<string | null>(null);
   const [publicPage, setPublicPage] = useState(false);
   const [overlayUrl, setOverlayUrl] = useState<string | null>(null);
@@ -129,6 +129,8 @@ export default function StreamKitClient() {
     <StudioShell
       active="Stream Kit"
       session={session}
+      authError={authError}
+      onRetry={retryAuth}
       eyebrow="Creator studio"
       title="Your stream"
       accent="kit."

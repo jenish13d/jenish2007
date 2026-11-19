@@ -54,11 +54,20 @@ export default function SignupClient() {
         password,
         options: {
           data: { creator_name: creatorName.trim() },
+          // Without this the confirmation link lands on the Supabase project's
+          // Site URL, which may not be this deployment.
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
         },
       });
 
       if (error) {
         setError(error.message);
+        return;
+      }
+
+      if (data.session) {
+        // Email confirmation is off: the account is already signed in.
+        router.replace("/dashboard");
         return;
       }
 

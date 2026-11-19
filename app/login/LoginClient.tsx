@@ -14,7 +14,11 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() =>
+    searchParams.get("error") === "link_expired"
+      ? "That email link has expired or was already used. Request a new one."
+      : "",
+  );
   const [message, setMessage] = useState("");
 
   async function handleLogin() {
@@ -42,7 +46,11 @@ function LoginForm() {
       // The proxy appends ?next= when it redirects an unauthenticated visitor,
       // so send them on to where they were headed. Only same-origin relative
       // paths are honoured — an absolute URL here would be an open redirect.
-      router.push(safeNextPath(searchParams.get("next")));
+      // replace + refresh: the back button shouldn't return to the form, and
+      // the router must re-request pages now that the session cookie exists.
+      router.replace(safeNextPath(searchParams.get("next")));
+      router.refresh();
+      return;
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

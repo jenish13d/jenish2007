@@ -26,13 +26,17 @@ type Payout = {
   id: string; creator_id: string; amount_paise: number; status: string; provider_ref: string | null;
   failure_reason: string | null; requested_at: string; creator_profiles?: { username: string | null; creator_name: string } | null;
 };
-type Gate = "loading" | "denied" | "mfa" | "ok";
+type Gate = "loading" | "denied" | "mfa" | "ok" | "error";
 const TABS = ["Overview", "Creators", "Payouts", "Finance", "Settings", "Audit"] as const;
 
-async function fetchOverview() {
-  const response = await fetch("/api/admin/overview", { credentials: "same-origin" });
-  const body = await response.json().catch(() => ({}));
-  return { response, body };
+async function fetchOverview(): Promise<{ response: Response | null; body: Record<string, unknown> }> {
+  try {
+    const response = await fetch("/api/admin/overview", { credentials: "same-origin", signal: AbortSignal.timeout(15_000) });
+    const body = await response.json().catch(() => ({}));
+    return { response, body };
+  } catch {
+    return { response: null, body: {} };
+  }
 }
 
 function hours(seconds: number) {
@@ -52,8 +56,11 @@ export default function AdminClient() {
     window.setTimeout(() => setToast(null), 4000);
   }, []);
 
-  const apply = useCallback((response: Response, body: { success?: boolean; overview?: Overview; role?: string; mfa_required?: boolean; mfa_enrolled?: boolean }) => {
-    if (response.ok && body.success && body.overview) {
+  const apply = useCallback((response: Response | null, raw: Record<string, unknown>) => {
+    const body = raw as { success?: boolean; overview?: Overview; role?: string; mfa_required?: boolean; mfa_enrolled?: boolean };
+    if (!response || response.status >= 500) {
+      setGate("error");
+    } else if (response.ok && body.success && body.overview) {
       setOverview(body.overview);
       setRole(body.role ?? "admin");
       setGate("ok");
@@ -119,6 +126,13 @@ export default function AdminClient() {
         </header>
 
         {gate === "loading" && <div className="st-glass st-skel h-64" aria-busy="true" />}
+        {gate === "error" && (
+          <div className="st-glass p-8" role="alert">
+            <h1 className="st-h2 !text-xl">Couldn&apos;t reach the server</h1>
+            <p className="st-muted mt-2 text-sm">Check your connection and try again.</p>
+            <button type="button" className="st-btn-mint mt-5 !py-3" onClick={() => { setGate("loading"); void load(); }}>Try again</button>
+          </div>
+        )}
         {gate === "denied" && (
           <div className="st-glass p-10 text-center">
             <h1 className="st-h2">Page not found</h1>

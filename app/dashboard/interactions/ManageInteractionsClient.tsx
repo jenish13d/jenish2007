@@ -61,7 +61,7 @@ const POSITIONS = [
 ] as const;
 
 export default function ManageInteractionsClient() {
-  const session = useStudioSession("/dashboard/interactions");
+  const { session, authError, retryAuth } = useStudioSession("/dashboard/interactions");
   const [prefs, setPrefs] = useState<Preferences | null>(null);
   const [platform, setPlatform] = useState<Platform | null>(null);
   const [rows, setRows] = useState<InteractionRow[]>([]);
@@ -197,6 +197,8 @@ export default function ManageInteractionsClient() {
     <StudioShell
       active="Manage Interactions"
       session={session}
+      authError={authError}
+      onRetry={retryAuth}
       eyebrow="Creator studio"
       title="Manage"
       accent="interactions."

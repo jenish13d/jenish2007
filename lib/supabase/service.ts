@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { serverEnv } from "../env.ts";
+import { createTimeoutFetch } from "./timeout-fetch.ts";
 
 /**
  * Privileged Supabase client. Uses the service-role key, so it bypasses RLS
@@ -52,6 +53,7 @@ export function getSupabaseServiceClient(): SupabaseClient {
           detectSessionInUrl: false,
         },
         global: {
+          fetch: createTimeoutFetch(15_000),
           headers: { "X-Client-Info": "streamlounge-server" },
         },
       },

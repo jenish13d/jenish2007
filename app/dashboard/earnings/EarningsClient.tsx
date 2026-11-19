@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { loginUrl, resolveClientAuth } from "@/lib/supabase/client-auth";
 import DashboardSidebar from "@/app/component/DashboardSidebar";
 import {
   BarChart3,
@@ -451,6 +453,7 @@ function StatCard({
 
 export default function EarningsClient() {
   const supabase = getSupabaseBrowserClient();
+  const router = useRouter();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [email, setEmail] = useState("");
@@ -525,18 +528,18 @@ export default function EarningsClient() {
       setLoading(true);
       setError("");
 
-      const { data: authData, error: authError } = await supabase.auth.getUser();
+      const auth = await resolveClientAuth();
 
-      if (authError) {
-        throw authError;
-      }
-
-      const user = authData.user;
-
-      if (!user) {
-        setError("Please login to view earnings.");
+      if (auth.status === "signed_out") {
+        router.replace(loginUrl("/dashboard/earnings"));
         return;
       }
+      if (auth.status === "error") {
+        setError(auth.message);
+        return;
+      }
+
+      const user = auth.user;
 
       setEmail(user.email || "");
 

@@ -31,6 +31,8 @@ const ALLOWED_IMAGE_MIME = [
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 import DashboardSidebar from "@/app/component/DashboardSidebar";
 import StreamLoader from "@/app/component/StreamLoader";
+import LoadError from "@/app/component/LoadError";
+import { loginUrl, resolveClientAuth } from "@/lib/supabase/client-auth";
 
 type Sound = {
   id: string;
@@ -347,6 +349,7 @@ export default function SoundboardClient() {
   const [creatorName, setCreatorName] = useState<string | undefined>(undefined);
   const [sounds, setSounds] = useState<Sound[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<"memes" | "my" | "favorites">("memes");
 
@@ -403,15 +406,27 @@ export default function SoundboardClient() {
 
   async function loadPage() {
     setLoading(true);
+    setLoadError(null);
+    try {
+      await loadPageInner();
+    } catch (err) {
+      console.error("Soundboard load failed:", err);
+      setLoadError("We couldn't reach the server. Check your connection and try again.");
+    }
+  }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  async function loadPageInner() {
+    const auth = await resolveClientAuth();
 
-    if (!user) {
-      router.push("/login");
+    if (auth.status === "signed_out") {
+      router.replace(loginUrl("/dashboard/soundboard"));
       return;
     }
+    if (auth.status === "error") {
+      setLoadError(auth.message);
+      return;
+    }
+    const user = auth.user;
 
     setUserId(user.id);
     setEmail(user.email || "");
@@ -482,19 +497,30 @@ export default function SoundboardClient() {
       return true;
     });
 
-    const soundResults = await Promise.all(
-      validSounds.map(async (sound) => {
-        const signedUrl = await getSignedAudioUrl(sound.storage_path);
+    // One batch request instead of one signing request per sound.
+    const paths = validSounds.map((sound) => (sound.storage_path ?? "").trim().replace(/^\/+/, ""));
+    const signed = new Map<string, string>();
+    if (paths.length) {
+      try {
+        const { data: urls, error: signError } = await supabase.storage
+          .from("soundboard-audio")
+          .createSignedUrls(paths, 3600);
+        if (signError) console.warn("[soundboard] batch signing failed:", signError.message);
+        for (const entry of urls ?? []) {
+          if (entry.path && entry.signedUrl) signed.set(entry.path, entry.signedUrl);
+        }
+      } catch (err) {
+        console.warn("[soundboard] batch signing threw:", err);
+      }
+    }
 
-        return {
-          ...sound,
-          image_path: sound.image_path ?? null,
-          isDefault: sound.creator_id === null,
-          previewUrl: signedUrl,
-          imageUrl: null,
-        } as Sound;
-      })
-    );
+    const soundResults = validSounds.map((sound, i) => ({
+      ...sound,
+      image_path: sound.image_path ?? null,
+      isDefault: sound.creator_id === null,
+      previewUrl: signed.get(paths[i]) ?? null,
+      imageUrl: null,
+    }) as Sound);
 
     setSounds(soundResults);
 
@@ -1062,6 +1088,10 @@ export default function SoundboardClient() {
     } finally {
       setUploading(false);
     }
+  }
+
+  if (loadError) {
+    return <LoadError message={loadError} onRetry={() => void loadPage()} />;
   }
 
   if (loading) {

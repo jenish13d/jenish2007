@@ -2,6 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { publicEnv } from "@/lib/env";
+import { safeNextPath } from "@/lib/http/safe-redirect";
+import { classifyAuthResult, type ClientAuth } from "@/lib/supabase/auth-state";
+import { createTimeoutFetch } from "@/lib/supabase/timeout-fetch";
 
 /**
  * Session refresh and route protection.
@@ -24,8 +27,42 @@ import { publicEnv } from "@/lib/env";
 const PROTECTED_PREFIXES = ["/dashboard", "/creator", "/admin", "/me"] as const;
 const AUTH_PAGES = ["/login", "/signup"] as const;
 
+/** Old links that should keep working. */
+const LEGACY_REDIRECTS: Record<string, string> = {
+  "/dashboard/settings": "/dashboard/interactions",
+};
+
+/**
+ * Segment-aware prefix match. A plain `startsWith("/creator")` also matched
+ * public creator pages such as `/creator_a` or `/meera`, sending their viewers
+ * to the login screen.
+ */
+export function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+const PROXY_AUTH_TIMEOUT_MS = 5_000;
+
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  const legacy = LEGACY_REDIRECTS[pathname];
+  if (legacy) {
+    const target = request.nextUrl.clone();
+    target.pathname = legacy;
+    return NextResponse.redirect(target, 308);
+  }
+
+  const isAuthPage = AUTH_PAGES.includes(pathname as (typeof AUTH_PAGES)[number]);
+  const isProtected = isProtectedPath(pathname);
+
   let response = NextResponse.next({ request });
+
+  // Public pages (home, creator pages, LoungeBoard) never need the auth
+  // round trip; skipping it removes a Supabase call from every public view.
+  if (!isAuthPage && !isProtected) {
+    return response;
+  }
 
   // Without configuration there is no session to refresh and nothing useful to
   // do; let the request through and let the page report the misconfiguration.
@@ -37,6 +74,7 @@ export async function proxy(request: NextRequest) {
     publicEnv.supabaseUrl,
     publicEnv.supabasePublishableKey,
     {
+      global: { fetch: createTimeoutFetch(PROXY_AUTH_TIMEOUT_MS) },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -55,25 +93,30 @@ export async function proxy(request: NextRequest) {
   );
 
   // getUser, not getSession: this validates the token with the auth server
-  // rather than trusting the cookie's contents.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // rather than trusting the cookie's contents. A network failure or timeout
+  // is NOT treated as "signed out": redirecting on it is what created the
+  // dashboard <-> login loop. The page itself re-checks and can show a retry.
+  let auth: ClientAuth;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    auth = classifyAuthResult(data.user, error);
+  } catch {
+    auth = { status: "error", message: "auth unavailable" };
+  }
 
-  const { pathname } = request.nextUrl;
-
-  if (!user && PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+  if (auth.status === "signed_out" && isProtected) {
     const target = request.nextUrl.clone();
     target.pathname = "/login";
-    target.searchParams.set("next", pathname);
+    target.search = "";
+    target.searchParams.set("next", pathname + request.nextUrl.search);
     return NextResponse.redirect(target);
   }
 
-  if (user && AUTH_PAGES.includes(pathname as (typeof AUTH_PAGES)[number])) {
-    const target = request.nextUrl.clone();
-    target.pathname = "/dashboard";
-    target.search = "";
-    return NextResponse.redirect(target);
+  if (auth.status === "signed_in" && isAuthPage) {
+    let next = safeNextPath(request.nextUrl.searchParams.get("next"));
+    // Never bounce back onto an auth page (that would loop).
+    if (AUTH_PAGES.some((page) => next === page || next.startsWith(`${page}?`))) next = "/dashboard";
+    return NextResponse.redirect(new URL(next, request.url));
   }
 
   return response;
@@ -81,14 +124,16 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   /**
-   * Skips static assets and the OBS overlay.
-   *
-   * The overlay is excluded deliberately: it is authorised by its own overlay
-   * key, it polls continuously, and it must keep working in an OBS browser
-   * source that holds no Supabase session. Running a session refresh against it
-   * on every poll would be pure overhead.
+   * Only pages that need a session decision run the proxy. The OBS overlay,
+   * webhooks, static assets and public creator pages are skipped entirely.
+   * API routes validate the session themselves.
    */
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|obs|overlay|api/overlay|api/payments/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mp3|webm)$).*)",
+    "/dashboard/:path*",
+    "/creator/:path*",
+    "/admin/:path*",
+    "/me/:path*",
+    "/login",
+    "/signup",
   ],
 };
