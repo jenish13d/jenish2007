@@ -9,6 +9,7 @@ import { interactionDefinition } from "@/lib/interactions/registry";
 import { authorizePaymentToken } from "@/lib/payments/authorize";
 import { linkPaymentToSubmission } from "@/lib/payments/ledger";
 import { moderateDisplayName } from "@/lib/moderation/display-name";
+import { effectiveMessageLimit, truncateCodePoints } from "@/lib/validation/limits";
 import {
   effectiveMinimum,
   globalMinimumRupees,
@@ -131,6 +132,21 @@ export const POST = withErrorHandling("interactions#POST", async (request: Reque
     return apiError("forbidden", "This creator has turned their page off.");
   }
 
+  // The creator's message limit (default 50), clamped to the owner-set bounds.
+  const [{ data: creatorPrefs }, { data: platform }] = await Promise.all([
+    service.from("creator_preferences").select("message_max_length").eq("creator_id", creatorId).maybeSingle(),
+    service.from("platform_settings").select("message_limit_default, message_limit_min, message_limit_max").maybeSingle(),
+  ]);
+  const messageLimit = effectiveMessageLimit(
+    creatorPrefs?.message_max_length,
+    {
+      min: platform?.message_limit_min ?? 10,
+      max: platform?.message_limit_max ?? 200,
+      fallback: platform?.message_limit_default ?? 50,
+    },
+    definition.maxMessageLength,
+  );
+
   // Re-check availability and price at submission time. A creator may have
   // disabled the interaction or raised the price between order and submission;
   // the payment stands, but it must still buy something currently on sale.
@@ -170,7 +186,7 @@ export const POST = withErrorHandling("interactions#POST", async (request: Reque
           fields: { message: "A message is required." },
         });
       }
-      message = message.slice(0, definition.maxMessageLength);
+      message = truncateCodePoints(message, messageLimit);
       break;
     }
 
@@ -237,7 +253,7 @@ export const POST = withErrorHandling("interactions#POST", async (request: Reque
         );
       }
       metadata.storage_path = input.storage_path;
-      message = message?.slice(0, definition.maxMessageLength) ?? null;
+      message = message ? truncateCodePoints(message, messageLimit) : null;
       break;
     }
 
@@ -281,7 +297,7 @@ export const POST = withErrorHandling("interactions#POST", async (request: Reque
           fields: { prompt: "A prompt is required." },
         });
       }
-      metadata.prompt = prompt.slice(0, definition.maxMessageLength);
+      metadata.prompt = truncateCodePoints(prompt, definition.maxMessageLength);
 
       // The image is the one /api/stickers/generate stored for this payment.
       // A client-supplied image URL is never accepted: it would let a viewer
@@ -320,7 +336,7 @@ export const POST = withErrorHandling("interactions#POST", async (request: Reque
     creatorUsername: creatorIdentity?.username,
   });
   if (!alias.ok) {
-    return apiError("validation_failed", alias.reason, { fields: { sender_name: [alias.reason] } });
+    return apiError("validation_failed", alias.reason, { fields: { sender_name: alias.reason } });
   }
   const senderName = alias.value;
 

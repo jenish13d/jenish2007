@@ -8,7 +8,6 @@ const features = [
   { icon: "💬", title: "Text to Speech", description: "Turn viewer messages into part of the show with interactive text and voice." },
   { icon: "🎙️", title: "Voice Messages", description: "Let your community become part of the action with audio interactions." },
   { icon: "🔊", title: "Soundboard", description: "Bring unexpected sounds and memorable moments straight into your stream." },
-  { icon: "✦", title: "Stickers", description: "Give your audience a visual way to react and make their presence felt." },
   { icon: "◉", title: "Spin the Wheel", description: "Add an element of chance and let your viewers influence what happens next." },
   { icon: "🎯", title: "Live Challenges", description: "Turn ordinary gameplay into a shared experience with viewer-triggered tasks." },
 ];
@@ -197,7 +196,7 @@ useEffect(() => {
           <div className="ss-marquee-track">
             {Array.from({ length: 2 }, (_, group) => (
               <div className="flex shrink-0 items-center gap-8 px-4" key={group}>
-                {["TEXT", "AUDIO", "SOUNDBOARD", "STICKERS", "SPIN THE WHEEL", "LIVE TASKS"].map((item) => (
+                {["TEXT", "AUDIO", "SOUNDBOARD", "SPIN THE WHEEL", "LIVE TASKS"].map((item) => (
                   <span key={item} className="flex items-center gap-8 text-xs font-medium tracking-[0.22em] text-white/45">
                     {item}<span className="ss-mint text-base">✳</span>
                   </span>
@@ -283,7 +282,7 @@ useEffect(() => {
               ["A", "Alex", "Sent a message", "💬"],
               ["M", "Morgan", "Triggered a sound", "🔊"],
               ["J", "Jamie", "Started a challenge", "🎯"],
-              ["R", "Riley", "Dropped a sticker", "✦"],
+              ["R", "Riley", "Sent an emoji reaction", "😀"],
             ].map(([initial, name, action, icon], i) => (
               <div key={name} className="ss-activity-row flex items-center gap-4 py-5" style={{ animationDelay: `${i * 0.12}s` }}>
                 <span className="ss-avatar">{initial}</span>

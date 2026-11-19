@@ -99,7 +99,8 @@ export default function CreatorPageClient() {
   const [copied, setCopied] = useState(false);
   const [activePanel, setActivePanel] = useState("profile");
   const [mobileTab, setMobileTab] = useState<"customize" | "preview">("customize");
-  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  // The desktop/mobile preview toggle was removed; the page itself stays fully responsive.
+  const previewDevice = "desktop" as "desktop" | "mobile";
 
   // Add gentle inertial easing to traditional mouse-wheel scrolling.
   // Trackpads, touch scrolling, inputs, and reduced-motion users keep native behavior.
@@ -518,26 +519,6 @@ export default function CreatorPageClient() {
                 </h1>
               </div>
 
-              {/* device toggle */}
-              <div className="relative hidden shrink-0 rounded-full border border-white/[0.08] bg-white/[0.04] p-1 sm:flex">
-                <span
-                  aria-hidden="true"
-                  className="cs-glider absolute bottom-1 top-1 w-[38px] rounded-full border border-[#5EEAD4]/25 bg-[#5EEAD4]/[0.12]"
-                  style={{ left: isMobilePreview ? 42 : 4 }}
-                />
-                {(["desktop", "mobile"] as const).map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setPreviewDevice(d)}
-                    aria-label={`${d} preview`}
-                    title={`${d[0].toUpperCase()}${d.slice(1)} preview`}
-                    className={`relative z-10 flex h-8 w-[38px] items-center justify-center ${previewDevice === d ? "text-[#5EEAD4]" : "text-[#64748B] hover:text-white"}`}
-                  >
-                    <Ico name={d === "desktop" ? "monitor" : "phone"} size={17} />
-                  </button>
-                ))}
-              </div>
             </div>
 
             {youtubeMessage && (
