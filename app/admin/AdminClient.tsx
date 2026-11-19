@@ -28,6 +28,12 @@ type Payout = {
 type Gate = "loading" | "denied" | "mfa" | "ok";
 const TABS = ["Overview", "Creators", "Payouts", "Finance", "Settings", "Audit"] as const;
 
+async function fetchOverview() {
+  const response = await fetch("/api/admin/overview", { credentials: "same-origin" });
+  const body = await response.json().catch(() => ({}));
+  return { response, body };
+}
+
 function hours(seconds: number) {
   return `${(seconds / 3600).toFixed(1)} h`;
 }
@@ -45,12 +51,10 @@ export default function AdminClient() {
     window.setTimeout(() => setToast(null), 4000);
   }, []);
 
-  const load = useCallback(async () => {
-    const response = await fetch("/api/admin/overview", { credentials: "same-origin" });
-    const body = await response.json().catch(() => ({}));
-    if (response.ok && body.success) {
+  const apply = useCallback((response: Response, body: { success?: boolean; overview?: Overview; role?: string; mfa_required?: boolean; mfa_enrolled?: boolean }) => {
+    if (response.ok && body.success && body.overview) {
       setOverview(body.overview);
-      setRole(body.role);
+      setRole(body.role ?? "admin");
       setGate("ok");
     } else if (body.mfa_required) {
       setMfaEnrolled(Boolean(body.mfa_enrolled));
@@ -60,9 +64,20 @@ export default function AdminClient() {
     }
   }, []);
 
+  const load = useCallback(async () => {
+    const { response, body } = await fetchOverview();
+    apply(response, body);
+  }, [apply]);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    let alive = true;
+    fetchOverview().then(({ response, body }) => {
+      if (alive) apply(response, body);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [apply]);
 
   return (
     <div className="st-root min-h-screen">
@@ -376,12 +391,26 @@ function AdjustDialog({ creator, onClose, onDone, notify }: { creator: CreatorRo
 function PayoutsTab({ notify }: { notify: (t: string, tone: "success" | "error") => void }) {
   const [status, setStatus] = useState("");
   const [rows, setRows] = useState<Payout[] | null>(null);
+  const fetchRows = useCallback(
+    () => apiJson<{ payouts: Payout[] }>(`/api/admin/payouts${status ? `?status=${status}` : ""}`),
+    [status],
+  );
   const load = useCallback(async () => {
-    const res = await apiJson<{ payouts: Payout[] }>(`/api/admin/payouts${status ? `?status=${status}` : ""}`);
+    const res = await fetchRows();
     if (res.ok) setRows(res.data.payouts);
     else notify(res.error, "error");
-  }, [status, notify]);
-  useEffect(() => { load(); }, [load]);
+  }, [fetchRows, notify]);
+  useEffect(() => {
+    let alive = true;
+    fetchRows().then((res) => {
+      if (!alive) return;
+      if (res.ok) setRows(res.data.payouts);
+      else notify(res.error, "error");
+    });
+    return () => {
+      alive = false;
+    };
+  }, [fetchRows, notify]);
 
   async function act(p: Payout, next: "approved" | "cancelled") {
     const reason = window.prompt(next === "approved" ? "Reason for approving (10+ characters):" : "Reason for cancelling (10+ characters):");

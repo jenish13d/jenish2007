@@ -10,6 +10,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Unmodified third-party code (see vendor/*/README.md). Still type-checked.
+    "vendor/**",
   ]),
 
   /**

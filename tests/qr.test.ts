@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import qrcodegen from "../lib/qr/qrcodegen.ts";
+import qrcodegen from "../vendor/qrcodegen/qrcodegen.ts";
 import { qrSvg } from "../lib/qr/svg.ts";
 
 test("encodes a creator link and renders a valid SVG", () => {

@@ -1,4 +1,4 @@
-import qrcodegen from "./qrcodegen.ts";
+import qrcodegen from "../../vendor/qrcodegen/qrcodegen.ts";
 
 /**
  * Renders text (a creator payment link) as a standalone SVG QR code.
