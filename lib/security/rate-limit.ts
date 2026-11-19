@@ -131,4 +131,8 @@ export const RATE_LIMITS = {
   creatorWrite: { limit: 60, windowMs: 60_000 },
   /** Signed upload URL issuance for viewer voice notes. */
   uploadTicket: { limit: 12, windowMs: 60_000 },
+  /** Owner/admin panel reads and writes. */
+  admin: { limit: 120, windowMs: 60_000 },
+  /** Withdrawal requests. */
+  payoutRequest: { limit: 5, windowMs: 60_000 },
 } as const satisfies Record<string, RateLimitRule>;

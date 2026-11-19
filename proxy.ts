@@ -21,7 +21,7 @@ import { publicEnv } from "@/lib/env";
  *      on for access control.
  */
 
-const PROTECTED_PREFIXES = ["/dashboard", "/creator"] as const;
+const PROTECTED_PREFIXES = ["/dashboard", "/creator", "/admin", "/me"] as const;
 const AUTH_PAGES = ["/login", "/signup"] as const;
 
 export async function proxy(request: NextRequest) {

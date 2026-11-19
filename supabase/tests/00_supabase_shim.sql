@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS auth.users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email text,
   raw_user_meta_data jsonb DEFAULT '{}'::jsonb,
+  email_confirmed_at timestamptz,
+  phone text,
   created_at timestamptz DEFAULT now()
 );
 -- auth.uid()/auth.jwt() read request.jwt.claims like PostgREST sets them.

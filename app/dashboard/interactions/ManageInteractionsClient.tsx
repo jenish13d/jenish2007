@@ -87,9 +87,11 @@ export default function ManageInteractionsClient() {
         notify(prefRes.error, "error");
       }
       const mins: Record<string, number> = {};
-      for (const p of pricingRes.data ?? []) mins[p.interaction_type] = Number(p.minimum_price);
+      const pricingRows = (pricingRes.data ?? []) as { interaction_type: string; minimum_price: number | string }[];
+      for (const p of pricingRows) mins[p.interaction_type] = Number(p.minimum_price);
       setMinimums(mins);
-      const existing = new Map((interactionsRes.data ?? []).map((r) => [r.interaction_type, r as InteractionRow]));
+      const existingRows = (interactionsRes.data ?? []) as InteractionRow[];
+      const existing = new Map<string, InteractionRow>(existingRows.map((r: InteractionRow) => [r.interaction_type, r]));
       setRows(
         INTERACTION_TYPES.map((type) =>
           existing.get(type) ?? {
