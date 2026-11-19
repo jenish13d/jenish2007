@@ -48,7 +48,7 @@ export default function LoungeBoardClient() {
     let alive = true;
     getSupabaseBrowserClient()
       .rpc("sl_loungeboard_locations", { p_scope: scope })
-      .then(({ data }) => {
+      .then(({ data }: { data: unknown }) => {
         if (!alive) return;
         const list = (data ?? []) as { value: string; creators: number }[];
         setPlaces(list);
@@ -63,7 +63,7 @@ export default function LoungeBoardClient() {
     let alive = true;
     getSupabaseBrowserClient()
       .rpc("sl_loungeboard", { p_scope: scope, p_value: scope === "global" ? null : place || null, p_period: period, p_limit: 50 })
-      .then(({ data }) => {
+      .then(({ data }: { data: unknown }) => {
         if (alive) setRows((data ?? []) as Row[]);
       });
     return () => {
