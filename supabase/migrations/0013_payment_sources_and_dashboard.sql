@@ -166,3 +166,19 @@ RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
 $$;
 REVOKE ALL ON FUNCTION public.sl_my_source_summary() FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.sl_my_source_summary() TO authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 7. Public: the creator's own Razorpay link (already public in their
+--    descriptions), shown on their page as the 0%-commission option.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.get_public_external_link(p_username text)
+RETURNS text
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+  SELECT cp2.external_payment_url
+    FROM public.creator_profiles cp
+    JOIN public.creator_preferences cp2 ON cp2.creator_id = cp.id
+   WHERE cp.public_page_enabled AND lower(cp.username) = lower(btrim(p_username))
+   LIMIT 1
+$$;
+REVOKE ALL ON FUNCTION public.get_public_external_link(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_public_external_link(text) TO anon, authenticated, service_role;

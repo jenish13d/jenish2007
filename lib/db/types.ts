@@ -159,13 +159,7 @@ export interface SoundboardSound {
   created_at: string;
 }
 
-export interface CreatorYoutubeTokens {
-  creator_id: string;
-  access_token: string | null;
-  refresh_token: string | null;
-  expires_at: string | null;
-  updated_at: string | null;
-}
+
 
 /**
  * Single-use ledger for paid AI generations, added by migration 0003.

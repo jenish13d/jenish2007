@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { MissingConfigError, integrationStatus } from "@/lib/env";
 import { apiError, apiSuccess, readJsonBody } from "@/lib/http/responses";
-import { clearYoutubeConnection } from "@/lib/integrations/youtube";
 import { disconnect, isPlatform } from "@/lib/integrations/platforms";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -10,6 +9,11 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
  * GET    /api/creator/connections — connection status (never tokens) plus
  *                                   which providers are configured.
  * DELETE /api/creator/connections — { platform } disconnects and revokes.
+ *
+ * Twitch and Kick only. The YouTube account connection was retired: YouTube
+ * streaming needs no account link (overlays, QR, alerts and TTS run through the
+ * OBS/Streamlabs browser source; creators can put their own Razorpay link in
+ * video descriptions).
  */
 export async function GET() {
   const supabase = await createSupabaseServerClient();
@@ -27,14 +31,13 @@ export async function GET() {
   return apiSuccess({
     connections: data ?? [],
     available: {
-      youtube: status.youtube && status.serviceRole && status.tokenEncryption,
       twitch: status.twitch && status.serviceRole && status.tokenEncryption,
       kick: status.kick && status.serviceRole && status.tokenEncryption,
     },
   });
 }
 
-const bodySchema = z.object({ platform: z.enum(["youtube", "twitch", "kick"]) }).strict();
+const bodySchema = z.object({ platform: z.enum(["twitch", "kick"]) }).strict();
 
 export async function DELETE(request: Request) {
   const supabase = await createSupabaseServerClient();
@@ -49,9 +52,7 @@ export async function DELETE(request: Request) {
   if (!parsed.success) return apiError("validation_failed", "Unknown platform.");
 
   try {
-    if (parsed.data.platform === "youtube") {
-      await clearYoutubeConnection(user.id);
-    } else if (isPlatform(parsed.data.platform)) {
+    if (isPlatform(parsed.data.platform)) {
       await disconnect(user.id, parsed.data.platform);
     }
   } catch (error) {

@@ -111,8 +111,6 @@ export const serverEnv = {
       "It is needed for text-to-speech and AI sticker generation.",
     ),
 
-  googleClientId: () => required("GOOGLE_CLIENT_ID"),
-  googleClientSecret: () => required("GOOGLE_CLIENT_SECRET"),
 
   twitchClientId: () => required("TWITCH_CLIENT_ID"),
   twitchClientSecret: () => required("TWITCH_CLIENT_SECRET"),
@@ -150,9 +148,6 @@ export function integrationStatus() {
     overlaySigning: Boolean(optional("OVERLAY_SIGNING_SECRET")),
     paymentSigning: Boolean(optional("PAYMENT_SIGNING_SECRET")),
     openai: Boolean(optional("OPENAI_API_KEY")),
-    youtube: Boolean(
-      optional("GOOGLE_CLIENT_ID") && optional("GOOGLE_CLIENT_SECRET"),
-    ),
     serviceRole: Boolean(optional("SUPABASE_SERVICE_ROLE_KEY")),
     twitch: Boolean(
       optional("TWITCH_CLIENT_ID") && optional("TWITCH_CLIENT_SECRET"),

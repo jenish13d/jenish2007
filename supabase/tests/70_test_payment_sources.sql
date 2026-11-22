@@ -72,3 +72,12 @@ EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
 -- 8. YouTube no longer appears among connections.
 SELECT pg_temp.eq('no youtube connection row', (SELECT count(*)::bigint FROM public.sl_my_connections() WHERE platform = 'youtube'), 0);
 RESET ROLE;
+
+-- 9. Public link lookup returns only the vetted URL, only for public pages.
+DO $$ DECLARE u text; BEGIN
+  SELECT username INTO u FROM public.creator_profiles WHERE id = '11111111-1111-1111-1111-111111111111';
+  IF u IS NOT NULL AND (SELECT public_page_enabled FROM public.creator_profiles WHERE id = '11111111-1111-1111-1111-111111111111')
+     AND public.get_public_external_link(u) IS DISTINCT FROM 'https://rzp.io/l/asha-live' THEN
+    RAISE EXCEPTION 'public external link lookup wrong';
+  END IF;
+END $$;

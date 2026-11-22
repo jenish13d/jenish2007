@@ -5,10 +5,9 @@ import { useEffect, useState } from "react";
 import { Panel, apiJson } from "@/app/component/studio/StudioShell";
 
 type Conn = { platform: string; connected: boolean; account_login: string | null; display_name: string | null; avatar_url: string | null };
-type Resp = { connections: Conn[]; available: Record<"youtube" | "twitch" | "kick", boolean> };
+type Resp = { connections: Conn[]; available: Record<"twitch" | "kick", boolean> };
 
 const PLATFORMS = [
-  { id: "youtube", name: "YouTube", start: "/api/auth/youtube/start", note: "Shows your channel and lets you see live chat in the dashboard. Read-only access." },
   { id: "twitch", name: "Twitch", start: "/api/auth/twitch/start", note: "Verifies your channel and shows it on your page. No chat or posting access." },
   { id: "kick", name: "Kick", start: "/api/auth/kick/start", note: "Verifies your channel and shows it on your page. Read-only access." },
 ] as const;
