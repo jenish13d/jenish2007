@@ -1054,10 +1054,10 @@ function AuxOverlay({ view, overlayKey }: { view: "qr" | "ticker"; overlayKey: s
     if (!username) return <main style={shell} />;
     return (
       <main style={shell}>
-        <div style={{ background: "rgba(10,33,55,.88)", border: "1px solid rgba(94,234,212,.35)", borderRadius: 24, padding: 18, textAlign: "center", color: "#fff", boxShadow: "0 20px 60px rgba(0,0,0,.35)" }}>
+        <div style={{ background: "rgba(17,19,21,.92)", border: "1px solid rgba(246,245,241,.14)", borderRadius: 16, padding: 16, textAlign: "center", color: "#F6F5F1", boxShadow: "0 24px 60px rgba(0,0,0,.45)" }}>
           <img src={`/api/qr/${encodeURIComponent(username)}?size=360`} alt="" width={240} height={240} style={{ borderRadius: 12, display: "block" }} />
-          <p style={{ margin: "12px 0 0", fontSize: 15, fontWeight: 600 }}><span style={{ color: "#6CCEB0" }}>ϟ</span> Stream<span style={{ color: "#C7B8F0" }}>Lounge</span></p>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,.7)" }}>Scan to send a superchat</p>
+          <p style={{ margin: "12px 0 0", fontSize: 11, letterSpacing: ".22em", fontFamily: "ui-monospace, Menlo, monospace", color: "#C8A878" }}>STREAMLOUNGE</p>
+          <p style={{ margin: "4px 0 0", fontSize: 13, color: "rgba(246,245,241,.75)" }}>Scan to send a superchat</p>
         </div>
       </main>
     );
@@ -1066,8 +1066,8 @@ function AuxOverlay({ view, overlayKey }: { view: "qr" | "ticker"; overlayKey: s
     <main style={{ ...shell, alignItems: "flex-end", justifyContent: "flex-start", padding: 20, boxSizing: "border-box" }}>
       <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8, maxWidth: 420 }}>
         {items.map((item) => (
-          <li key={item.id} style={{ background: "rgba(10,33,55,.85)", border: "1px solid rgba(167,139,250,.3)", borderRadius: 14, padding: "8px 14px", color: "#fff", fontSize: 14 }}>
-            <strong style={{ color: "#6CCEB0" }}>{item.sender_name}</strong>
+          <li key={item.id} style={{ background: "rgba(17,19,21,.9)", border: "1px solid rgba(246,245,241,.12)", borderLeft: "2px solid #C8A878", borderRadius: 10, padding: "8px 14px", color: "#F6F5F1", fontSize: 14 }}>
+            <strong style={{ color: "#C8A878" }}>{item.sender_name}</strong>
             {item.amount != null && <span style={{ color: "#C7B8F0" }}> · ₹{item.amount}</span>}
             {item.message && <div style={{ color: "rgba(255,255,255,.8)", fontSize: 13, marginTop: 2, overflowWrap: "anywhere" }}>{item.message}</div>}
           </li>
