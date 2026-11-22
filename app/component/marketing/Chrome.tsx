@@ -28,8 +28,10 @@ export function MarketingNav() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <Link href="/login" className="sl-btn sl-btn-quiet hidden sm:inline-flex">Sign in</Link>
-          <Link href="/signup" className="sl-btn sl-btn-mono">Start streaming</Link>
+          <Link href="/login" className="sl-btn sl-btn-quiet hidden md:inline-flex">Sign in</Link>
+          <Link href="/login" className="sl-btn sl-btn-quiet sl-btn-sm md:hidden">Sign in</Link>
+          <Link href="/signup" className="sl-btn sl-btn-mono hidden md:inline-flex">Start streaming</Link>
+          <Link href="/signup" className="sl-btn sl-btn-mono sl-btn-sm md:hidden">Join</Link>
         </div>
       </div>
     </header>
@@ -89,7 +91,7 @@ export function MarketingPage({ children }: { children: ReactNode }) {
 /** Abstract sculpture: a lit arc in a dark room. Pure SVG, no images. */
 export function Sculpture({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 900 720" fill="none" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+    <svg className={className} viewBox="0 0 900 720" fill="none" aria-hidden="true" preserveAspectRatio="xMaxYMid slice">
       <defs>
         <radialGradient id="sl-beam" cx="78%" cy="0%" r="75%">
           <stop offset="0" stopColor="#f6f5f1" stopOpacity=".42" />

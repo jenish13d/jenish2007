@@ -58,7 +58,7 @@ export default function Home() {
     <MarketingPage>
       {/* ---------------------------------------------------------- hero */}
       <section className="sl-grain relative -mt-20 overflow-hidden pt-20">
-        <Sculpture className="pointer-events-none absolute inset-0 h-full w-full" />
+        <Sculpture className="sl-hero-sculpture pointer-events-none absolute inset-0 h-full w-full" />
         <div className="relative z-[2] mx-auto max-w-[1320px] px-5 pb-20 pt-16 md:px-10 md:pb-28 md:pt-28">
           <p className="sl-kicker sl-kicker-rule sl-in">Creator monetization for live streams</p>
           <h1 className="sl-display sl-in mt-8" style={{ ["--d" as string]: 80 }}>
