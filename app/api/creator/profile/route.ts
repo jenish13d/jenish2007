@@ -37,10 +37,8 @@ export const GET = withErrorHandling("creator/profile#GET", async () => {
     .select(
       `id, creator_name, username, bio, profile_image_url, banner_image_url,
        public_page_enabled, audio_upload_enabled, overlay_theme,
-       instagram_url, twitter_url, youtube_url, discord_url,
-       youtube_connected, youtube_channel_id, youtube_channel_name,
-       youtube_handle, youtube_avatar_url, youtube_banner_url,
-       youtube_subscribers, created_at`,
+       instagram_url, twitter_url, youtube_url, twitch_url, kick_url, discord_url,
+       created_at`,
     )
     .eq("id", user.id)
     .maybeSingle();

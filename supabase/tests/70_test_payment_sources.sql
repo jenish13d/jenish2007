@@ -77,7 +77,7 @@ RESET ROLE;
 DO $$ DECLARE u text; BEGIN
   SELECT username INTO u FROM public.creator_profiles WHERE id = '11111111-1111-1111-1111-111111111111';
   IF u IS NOT NULL AND (SELECT public_page_enabled FROM public.creator_profiles WHERE id = '11111111-1111-1111-1111-111111111111')
-     AND public.get_public_external_link(u) IS DISTINCT FROM 'https://rzp.io/l/asha-live' THEN
+     AND public.get_public_page_extras(u)->>'external_payment_url' IS DISTINCT FROM 'https://rzp.io/l/asha-live' THEN
     RAISE EXCEPTION 'public external link lookup wrong';
   END IF;
 END $$;

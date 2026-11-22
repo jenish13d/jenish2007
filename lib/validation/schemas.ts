@@ -165,6 +165,8 @@ export const updateProfileSchema = z.object({
   instagram_url: optionalUrl,
   twitter_url: optionalUrl,
   youtube_url: optionalUrl,
+  twitch_url: optionalUrl,
+  kick_url: optionalUrl,
   discord_url: optionalUrl,
 });
 

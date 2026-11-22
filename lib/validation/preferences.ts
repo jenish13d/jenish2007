@@ -15,6 +15,21 @@ export const dashboardLayoutSchema = z
   .strict()
   .refine((v) => new Set(v.order).size === v.order.length, "Duplicate widget in layout.");
 
+export const PAGE_ACCENTS = ["champagne", "silver", "sage", "clay", "ink"] as const;
+export const pageStyleSchema = z
+  .object({
+    accent: z.enum(PAGE_ACCENTS),
+    theme: z.enum(["dark", "light"]),
+    layout: z.enum(["editorial", "centered", "compact"]),
+    button: z.enum(["solid", "outline"]),
+    font: z.enum(["sans", "mono"]),
+    amounts: z.array(z.number().int().min(1).max(500000)).max(6),
+    show_qr: z.boolean(),
+  })
+  .partial()
+  .strict();
+export type PageStyle = z.infer<typeof pageStyleSchema>;
+
 const plainText = (max: number) =>
   z
     .string()
@@ -73,6 +88,7 @@ export const updatePreferencesSchema = z
       .nullable(),
     dashboard_layout: dashboardLayoutSchema,
     ui_theme: z.enum(["dark", "light", "system"]),
+    page_style: pageStyleSchema,
   })
   .partial()
   .strict();

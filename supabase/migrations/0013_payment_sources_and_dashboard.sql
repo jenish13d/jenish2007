@@ -168,17 +168,25 @@ REVOKE ALL ON FUNCTION public.sl_my_source_summary() FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.sl_my_source_summary() TO authenticated;
 
 -- ---------------------------------------------------------------------------
--- 7. Public: the creator's own Razorpay link (already public in their
---    descriptions), shown on their page as the 0%-commission option.
+-- 7. Public page appearance + the creator's own Razorpay link (already public
+--    in their descriptions), shown on their page as the 0%-commission option.
 -- ---------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.get_public_external_link(p_username text)
-RETURNS text
+ALTER TABLE public.creator_preferences
+  ADD COLUMN IF NOT EXISTS page_style jsonb NOT NULL DEFAULT '{}'::jsonb;
+DO $$ BEGIN
+  ALTER TABLE public.creator_preferences ADD CONSTRAINT creator_preferences_page_style_shape
+    CHECK (jsonb_typeof(page_style) = 'object' AND pg_column_size(page_style) < 2048);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+GRANT UPDATE (page_style) ON public.creator_preferences TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.get_public_page_extras(p_username text)
+RETURNS jsonb
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
-  SELECT cp2.external_payment_url
+  SELECT jsonb_build_object('external_payment_url', cp2.external_payment_url, 'page_style', cp2.page_style)
     FROM public.creator_profiles cp
     JOIN public.creator_preferences cp2 ON cp2.creator_id = cp.id
    WHERE cp.public_page_enabled AND lower(cp.username) = lower(btrim(p_username))
    LIMIT 1
 $$;
-REVOKE ALL ON FUNCTION public.get_public_external_link(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.get_public_external_link(text) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.get_public_page_extras(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_public_page_extras(text) TO anon, authenticated, service_role;

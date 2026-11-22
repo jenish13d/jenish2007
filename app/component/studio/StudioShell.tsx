@@ -102,6 +102,75 @@ export function useUiTheme(): [UiTheme, (t: UiTheme) => void] {
   return [theme, setTheme];
 }
 
+/* ---------------------------------------------------------- notifications */
+
+/**
+ * While the studio is open, checks for new superchats every 30 seconds (one
+ * single-row read under RLS) and, per the creator's device preferences in
+ * Settings, shows a browser notification and/or plays a soft chime.
+ */
+function useSuperchatNotifier(userId: string | null) {
+  useEffect(() => {
+    if (!userId) return;
+    let prefs = { browser: false, sound: true };
+    try {
+      const saved = JSON.parse(window.localStorage.getItem("sl-notify") || "null");
+      if (saved && typeof saved === "object") prefs = { browser: Boolean(saved.browser), sound: saved.sound !== false };
+    } catch {
+      /* ignore */
+    }
+    if (!prefs.browser && !prefs.sound) return;
+    let last: string | null = null;
+    let stopped = false;
+    const check = async () => {
+      if (document.hidden && !prefs.browser) return;
+      const { data } = await getSupabaseBrowserClient()
+        .from("payments")
+        .select("id, display_name, amount_paise, captured_at")
+        .eq("creator_id", userId)
+        .order("captured_at", { ascending: false })
+        .limit(1);
+      const top = data?.[0];
+      if (stopped || !top) return;
+      if (last && top.id !== last) {
+        const text = `${top.display_name} sent ${formatRupees(top.amount_paise)}`;
+        if (prefs.browser && typeof Notification !== "undefined" && Notification.permission === "granted") {
+          new Notification("New superchat", { body: text, tag: top.id });
+        }
+        if (prefs.sound) chime();
+      }
+      last = top.id;
+    };
+    void check();
+    const id = window.setInterval(() => void check(), 30_000);
+    return () => {
+      stopped = true;
+      window.clearInterval(id);
+    };
+  }, [userId]);
+}
+
+function chime() {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(880, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12);
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+    o.connect(g).connect(ctx.destination);
+    o.start();
+    o.stop(ctx.currentTime + 0.55);
+    o.onended = () => void ctx.close();
+  } catch {
+    /* audio unavailable */
+  }
+}
+
 /* ------------------------------------------------------------- navigation */
 
 type NavItem = { label: string; href: string; icon: IconName; match?: string[] };
@@ -173,6 +242,7 @@ export function StudioShell({
   const pathname = usePathname();
   const [theme, setTheme] = useUiTheme();
   const [navOpen, setNavOpen] = useState(false);
+  useSuperchatNotifier(session?.userId ?? null);
 
   if (authError) return <LoadError message={authError} onRetry={onRetry ?? (() => window.location.reload())} />;
   if (!session) return <StreamLoader messages={["Opening your studio"]} />;
