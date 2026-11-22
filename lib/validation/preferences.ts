@@ -1,12 +1,11 @@
 import { z } from "zod";
 
+import { WIDGETS } from "../dashboard/layout.ts";
+
 /** Mirrors the CHECK in migration 0013. */
 export const EXTERNAL_RAZORPAY_URL = /^https:\/\/(rzp\.io|razorpay\.me|pages\.razorpay\.com)\/[A-Za-z0-9._~/@-]+$/;
 
-export const DASHBOARD_WIDGETS = [
-  "earnings", "balance", "trend", "sources", "recent", "supporters", "streams", "setup",
-] as const;
-export type DashboardWidget = (typeof DASHBOARD_WIDGETS)[number];
+const DASHBOARD_WIDGETS = WIDGETS;
 
 export const dashboardLayoutSchema = z
   .object({
