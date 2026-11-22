@@ -1,15 +1,23 @@
-import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+
+import CreatorPage from "@/app/component/creator-page/CreatorPage";
 
 /**
- * Short creator payment link: streamlounge.co/c/<username>.
- * Used by QR codes and stream panels; forwards to the creator's page, which is
- * where interaction choice, message, display name and checkout happen. All
- * attribution and amounts are decided server-side at order creation.
+ * Canonical creator page and QR target: /c/<username>.
+ * The page chooses what to send; the server decides amounts, fees and source.
  */
 export const dynamic = "force-dynamic";
 
+const USERNAME = /^[A-Za-z0-9_]{3,30}$/;
+
+export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
+  const { username } = await params;
+  return { title: `Support @${username}`, description: `Send @${username} a superchat on StreamLounge.` };
+}
+
 export default async function Page({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
-  if (!/^[A-Za-z0-9_]{3,30}$/.test(username)) notFound();
-  redirect(`/${username}`);
+  if (!USERNAME.test(username)) notFound();
+  return <CreatorPage username={username} />;
 }
