@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { Stat, apiJson, d, formatRupees } from "@/app/component/studio/StudioShell";
 import { STUDIO_CSS } from "@/app/component/studio/theme";
+import { LogoMark } from "@/app/component/ui/icons";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type Overview = {
@@ -18,7 +19,7 @@ type Overview = {
 };
 type CreatorRow = {
   creator_id: string; username: string | null; creator_name: string; registered_at: string; public_page: boolean;
-  youtube_connected: boolean; streams: number; stream_seconds: number; superchats: number; gross_paise: number;
+  streams: number; stream_seconds: number; superchats: number; gross_paise: number;
   creator_share_paise: number; platform_share_paise: number; pending_payout_paise: number; paid_out_paise: number;
   available_paise: number;
 };
@@ -88,13 +89,8 @@ export default function AdminClient() {
   }, [apply]);
 
   return (
-    <div className="st-root min-h-screen">
+    <div className="sl st-root min-h-screen" data-theme="dark">
       <style>{STUDIO_CSS}</style>
-      <div className="st-ambient" aria-hidden="true">
-        <span className="st-orb st-orb-1" />
-        <span className="st-orb st-orb-2" />
-        <span className="st-grid" />
-      </div>
       {toast && (
         <div role="status" aria-live="polite" className={`st-toast ${toast.tone === "success" ? "st-toast-success" : "st-toast-error"}`}>
           {toast.text}
@@ -103,20 +99,21 @@ export default function AdminClient() {
       <main className="relative mx-auto max-w-[1400px] px-5 py-8 md:px-8">
         <header className="st-rise mb-8 flex flex-wrap items-end justify-between gap-4" style={d(0)}>
           <div>
-            <Link href="/" className="text-xl font-semibold tracking-tight">
-              <span className="text-[#6CCEB0]">ϟ</span> Stream<span className="text-[#C7B8F0]">Lounge</span>
+            <Link href="/" className="inline-flex items-center gap-2.5">
+              <LogoMark />
+              <span className="sl-wordmark">STREAMLOUNGE</span>
             </Link>
-            <p className="st-eyebrow mt-4"><span className="st-dot" />Owner console</p>
+            <p className="sl-kicker mt-4">Administration · Lumvik Solutions</p>
           </div>
           {gate === "ok" && (
-            <nav className="st-tabs flex flex-wrap gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1" aria-label="Admin sections">
+            <nav className="sl-seg flex-wrap" aria-label="Admin sections">
               {TABS.map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => setTab(t)}
                   aria-current={tab === t ? "page" : undefined}
-                  className={`rounded-full px-4 py-2 text-sm ${tab === t ? "bg-[#5EEAD4]/15 text-[#5EEAD4]" : "text-white/60 hover:text-white"}`}
+                  aria-pressed={tab === t}
                 >
                   {t}
                 </button>
@@ -150,6 +147,9 @@ export default function AdminClient() {
             {tab === "Audit" && <AuditTab />}
           </>
         )}
+        <footer className="sl-faint mt-16 border-t pt-6 text-[12px]" style={{ borderColor: "var(--sl-line)" }}>
+          StreamLounge administration · Powered by Lumvik Solutions · Access requires an administrator role and MFA.
+        </footer>
       </main>
     </div>
   );
@@ -350,7 +350,7 @@ function CreatorsTab({ notify, isOwner }: { notify: (t: string, tone: "success" 
                 <div className="st-muted text-xs">@{c.username ?? "—"} · <code className="text-[10px]">{c.creator_id.slice(0, 8)}</code></div>
               </td>
               <td className="px-4 py-3 text-white/70">{new Date(c.registered_at).toLocaleDateString("en-IN")}</td>
-              <td className="px-4 py-3">{c.public_page ? <span className="st-chip st-chip-on !text-[10px]">Public</span> : <span className="st-chip !text-[10px]">Private</span>}{c.youtube_connected && <span className="st-muted ml-2 text-xs">YT</span>}</td>
+              <td className="px-4 py-3">{c.public_page ? <span className="st-chip st-chip-on !text-[10px]">Public</span> : <span className="st-chip !text-[10px]">Private</span>}</td>
               <td className="px-4 py-3 text-white/70">{c.streams} · {hours(c.stream_seconds)}</td>
               <td className="px-4 py-3 text-white/70">{c.superchats}</td>
               <td className="px-4 py-3">{formatRupees(c.gross_paise)}</td>
@@ -359,7 +359,7 @@ function CreatorsTab({ notify, isOwner }: { notify: (t: string, tone: "success" 
               <td className="px-4 py-3">{formatRupees(c.available_paise)}</td>
               <td className="px-4 py-3">{formatRupees(c.pending_payout_paise)}</td>
               <td className="px-4 py-3">{formatRupees(c.paid_out_paise)}</td>
-              <td className="px-4 py-3">{isOwner && <button type="button" className="text-xs text-[#5EEAD4] hover:underline" onClick={() => setAdjusting(c)}>Adjust…</button>}</td>
+              <td className="px-4 py-3">{isOwner && <button type="button" className="text-xs text-[color:var(--sl-accent)] hover:underline" onClick={() => setAdjusting(c)}>Adjust…</button>}</td>
             </tr>
           ))}
         </Table>
@@ -456,7 +456,7 @@ function PayoutsTab({ notify }: { notify: (t: string, tone: "success" | "error")
               <td className="px-4 py-3 text-white/70">{p.provider_ref ?? "—"}</td>
               <td className="px-4 py-3 text-white/70">{p.failure_reason ?? ""}</td>
               <td className="px-4 py-3 space-x-3">
-                {p.status === "requested" && <button type="button" className="text-xs text-[#5EEAD4]" onClick={() => act(p, "approved")}>Approve</button>}
+                {p.status === "requested" && <button type="button" className="text-xs text-[color:var(--sl-accent)]" onClick={() => act(p, "approved")}>Approve</button>}
                 {(p.status === "requested" || p.status === "approved") && <button type="button" className="text-xs text-red-300" onClick={() => act(p, "cancelled")}>Cancel</button>}
               </td>
             </tr>
@@ -473,11 +473,26 @@ function FinanceTab() {
     refunds: { id: string; payment_id: string; amount_paise: number; status: string; created_at: string }[];
     disputes: { id: string; payment_id: string; amount_paise: number; status: string; created_at: string }[];
     discrepancies: { unprocessed_webhooks: { event_id: string; event: string; received_at: string; error: string | null }[]; payments_without_alert: { id: string; amount_paise: number; captured_at: string }[] };
+    sources: {
+      STREAMLOUNGE_QR: { count: number; gross_paise: number; refunded_paise: number; platform_fee_paise: number; gateway_fee_paise: number; creator_share_paise: number };
+      platform_revenue_net_paise: number;
+      EXTERNAL_RAZORPAY_LINK: { count: number; gross_paise: number; platform_fee_paise: number; creators: number };
+    } | null;
   } | null>(null);
   useEffect(() => { apiJson<NonNullable<typeof data>>("/api/admin/finance").then((r) => r.ok && setData(r.data)); }, []);
   if (!data) return <div className="st-glass st-skel h-40" />;
   return (
     <div className="space-y-6">
+      {data.sources ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <Stat label="QR gross (StreamLounge QR)" value={formatRupees(data.sources.STREAMLOUNGE_QR.gross_paise)} hint={`${data.sources.STREAMLOUNGE_QR.count} payments · ${formatRupees(data.sources.STREAMLOUNGE_QR.refunded_paise)} refunded`} />
+          <Stat label="QR platform fees (8% policy)" value={formatRupees(data.sources.STREAMLOUNGE_QR.platform_fee_paise)} hint={`Gateway charges ${formatRupees(data.sources.STREAMLOUNGE_QR.gateway_fee_paise)} recorded separately`} />
+          <Stat label="Platform revenue, net (ledger)" value={formatRupees(data.sources.platform_revenue_net_paise)} hint="After gateway costs, refunds and adjustments" />
+          <Stat label="External Razorpay links (0%)" value={formatRupees(data.sources.EXTERNAL_RAZORPAY_LINK.gross_paise)} hint={`${data.sources.EXTERNAL_RAZORPAY_LINK.count} verified payments · ${data.sources.EXTERNAL_RAZORPAY_LINK.creators} creators · not platform revenue`} />
+        </div>
+      ) : (
+        <p className="sl-well p-4 text-[13px] sl-muted">Payment-source breakdown appears once migration 0013 is applied.</p>
+      )}
       <section className="st-glass p-6">
         <h2 className="st-h2 !text-lg">Reconciliation</h2>
         <p className="st-muted mt-1 text-sm">{data.discrepancies.unprocessed_webhooks.length} webhook events not processed · {data.discrepancies.payments_without_alert.length} payments older than an hour with no alert delivered</p>
@@ -486,10 +501,11 @@ function FinanceTab() {
           {data.discrepancies.payments_without_alert.map((p) => <li key={p.id}>{p.id} · {formatRupees(p.amount_paise)} · no alert</li>)}
         </ul>
       </section>
-      <Table head={["Payment", "Sender", "Amount", "Platform fee", "Gateway", "Creator", "Refunded", "Status", "Captured"]}>
+      <Table head={["Payment", "Source", "Sender", "Amount", "Platform fee", "Gateway", "Creator", "Refunded", "Status", "Captured"]}>
         {data.payments.map((p) => (
           <tr key={p.id}>
             <td className="px-4 py-3"><code className="text-xs">{p.id}</code></td>
+            <td className="px-4 py-3"><span className="sl-badge sl-badge-accent">QR</span></td>
             <td className="px-4 py-3">{p.display_name}</td>
             <td className="px-4 py-3">{formatRupees(p.amount_paise)}</td>
             <td className="px-4 py-3">{formatRupees(p.platform_fee_paise)}</td>
@@ -538,7 +554,7 @@ function SettingsTab({ notify, isOwner }: { notify: (t: string, tone: "success" 
     <section className="st-glass p-6">
       <p className="st-muted text-sm leading-6">Fee changes apply to new payments only; each payment keeps the rate in force when it was captured. Changing creator-facing terms should be announced to creators in advance.</p>
       <div className="mt-5 grid gap-5 md:grid-cols-3">
-        {num("platform_fee_bps", "Platform fee (basis points)", `${(Number(view.platform_fee_bps) / 100).toFixed(2)}% of each payment`)}
+        {num("platform_fee_bps", "StreamLounge QR platform fee (basis points)", `${(Number(view.platform_fee_bps) / 100).toFixed(2)}% of each QR payment · policy: 800 (8%). External Razorpay links are always 0%.`)}
         <div>
           <label className="st-label" htmlFor="bearer">Gateway fee paid by</label>
           <select id="bearer" disabled={!isOwner} value={String(view.gateway_fee_bearer)} onChange={(e) => setChanges((c) => ({ ...c, gateway_fee_bearer: e.target.value }))} className="st-field w-full">

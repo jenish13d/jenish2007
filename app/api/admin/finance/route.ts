@@ -18,7 +18,7 @@ export const GET = withErrorHandling("admin/finance", async (request: Request) =
   if (from && !Number.isNaN(Date.parse(from))) payments = payments.gte("captured_at", new Date(from).toISOString());
   if (to && !Number.isNaN(Date.parse(to))) payments = payments.lte("captured_at", new Date(to).toISOString());
 
-  const [p, r, d, w, unlinked] = await Promise.all([
+  const [p, r, d, w, unlinked, sources] = await Promise.all([
     payments,
     db.from("refunds").select("id, payment_id, amount_paise, status, created_at").order("created_at", { ascending: false }).limit(100),
     db.from("disputes").select("id, payment_id, amount_paise, status, created_at, updated_at").order("created_at", { ascending: false }).limit(100),
@@ -26,10 +26,16 @@ export const GET = withErrorHandling("admin/finance", async (request: Request) =
     // Reconciliation: captured money with no alert delivered after an hour.
     db.from("payments").select("id, creator_id, amount_paise, captured_at").is("submission_id", null)
       .lt("captured_at", new Date(Date.now() - 3600_000).toISOString()).limit(50),
+    // Revenue by payment source (migration 0013). Optional: older schemas lack it.
+    db.rpc("sl_admin_source_breakdown", {
+      p_from: from && !Number.isNaN(Date.parse(from)) ? new Date(from).toISOString() : null,
+      p_to: to && !Number.isNaN(Date.parse(to)) ? new Date(to).toISOString() : null,
+    }),
   ]);
   if (p.error || r.error || d.error || w.error || unlinked.error) return apiError("internal_error", "Could not load finance data.");
   return apiSuccess({
     payments: p.data, refunds: r.data, disputes: d.data,
+    sources: sources.error ? null : sources.data,
     discrepancies: { unprocessed_webhooks: w.data, payments_without_alert: unlinked.data },
   });
 });

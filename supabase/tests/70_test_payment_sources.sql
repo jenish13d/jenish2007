@@ -81,3 +81,14 @@ DO $$ DECLARE u text; BEGIN
     RAISE EXCEPTION 'public external link lookup wrong';
   END IF;
 END $$;
+
+-- 10. Admin breakdown: external never counted as platform revenue; not callable by creators.
+DO $$ DECLARE j jsonb := public.sl_admin_source_breakdown(NULL, NULL); BEGIN
+  IF (j->'EXTERNAL_RAZORPAY_LINK'->>'platform_fee_paise')::bigint <> 0 THEN RAISE EXCEPTION 'external fee counted'; END IF;
+  IF (j->'EXTERNAL_RAZORPAY_LINK'->>'gross_paise')::bigint <> 50000 THEN RAISE EXCEPTION 'external gross wrong: %', j; END IF;
+  IF (j->'STREAMLOUNGE_QR'->>'count')::bigint < 1 THEN RAISE EXCEPTION 'qr missing'; END IF;
+END $$;
+SELECT pg_temp.as_user('11111111-1111-1111-1111-111111111111');
+DO $$ BEGIN PERFORM public.sl_admin_source_breakdown(NULL, NULL); RAISE EXCEPTION 'creator ran admin breakdown';
+EXCEPTION WHEN insufficient_privilege THEN NULL; END $$;
+RESET ROLE;

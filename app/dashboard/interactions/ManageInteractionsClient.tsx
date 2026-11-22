@@ -1,5 +1,6 @@
 "use client";
 
+import { formatBps } from "@/lib/payments/fees";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -199,9 +200,8 @@ export default function ManageInteractionsClient() {
       session={session}
       authError={authError}
       onRetry={retryAuth}
-      eyebrow="Creator studio"
-      title="Manage"
-      accent="interactions."
+      eyebrow="Studio · Manage Interactions"
+      title="Manage Interactions"
       subtitle="Choose what viewers can send, what it costs, and how it shows up and sounds on your stream."
       toast={toast}
       aside={
@@ -216,9 +216,11 @@ export default function ManageInteractionsClient() {
         <div className="grid gap-6 xl:grid-cols-2">
           <Panel
             title="Interactions & pricing"
-            subtitle={`StreamLounge's fee is ${(platform.platform_fee_bps / 100).toFixed(1)}%. ${
-              platform.gateway_fee_bearer === "platform" ? "Payment gateway charges come out of StreamLounge's fee, not yours." : "Payment gateway charges (about 2.36%) are deducted from your share."
-            }`}
+            subtitle={`StreamLounge QR platform fee: ${formatBps(platform.platform_fee_bps)} (your share ${formatBps(10000 - platform.platform_fee_bps)}). ${
+              platform.gateway_fee_bearer === "platform"
+                ? "Gateway charges and taxes are recorded separately and currently borne by StreamLounge."
+                : "Gateway charges and taxes are recorded separately and deducted from your share."
+            } Your own Razorpay link carries no StreamLounge fee.`}
             delay={80}
           >
             <ul className="divide-y divide-white/10">
@@ -235,8 +237,8 @@ export default function ManageInteractionsClient() {
                     </div>
                     <div className="flex items-center gap-3">
                       <label className="sr-only" htmlFor={`price-${row.interaction_type}`}>{def.label} price</label>
-                      <div className="flex items-center rounded-xl border border-white/15 bg-black/20 px-3">
-                        <span className="st-muted text-sm">₹</span>
+                      <div className="sl-input-group">
+                        <span className="sl-addon">₹</span>
                         <input
                           id={`price-${row.interaction_type}`}
                           type="number"
@@ -255,7 +257,7 @@ export default function ManageInteractionsClient() {
                               notify(`Minimum for ${def.label} is ₹${min}.`, "error");
                             }
                           }}
-                          className="w-20 bg-transparent py-2 pl-1 text-sm text-white outline-none"
+                          className="sl-input sl-num !w-24"
                         />
                       </div>
                       <button
@@ -283,7 +285,7 @@ export default function ManageInteractionsClient() {
 
           <Panel title="Messages" subtitle="What viewers can type, and what the stream shows." delay={140}>
             <label className="block text-sm font-medium text-white" htmlFor="msg-limit">
-              Maximum message length: <span className="text-[#5EEAD4]">{view.message_max_length} characters</span>
+              Maximum message length: <span className="text-[color:var(--sl-accent)]">{view.message_max_length} characters</span>
             </label>
             <input
               id="msg-limit"
@@ -292,7 +294,7 @@ export default function ManageInteractionsClient() {
               max={platform.message_limit_max}
               value={view.message_max_length}
               onChange={(e) => set("message_max_length", Number(e.target.value))}
-              className="mt-3 w-full accent-[#5EEAD4]"
+              className="mt-3 w-full accent-[color:var(--sl-accent)]"
             />
             <p className="st-muted mt-1 text-xs">Default is {platform.message_limit_default}. Emoji count as one character each.</p>
             <div className="mt-4 divide-y divide-white/10">
@@ -304,7 +306,7 @@ export default function ManageInteractionsClient() {
 
           <Panel title="On-screen alerts" subtitle="Applies to OBS, Streamlabs and StreamYard overlays." delay={200}>
             <label className="block text-sm font-medium text-white" htmlFor="alert-duration">
-              Alert duration: <span className="text-[#5EEAD4]">{(view.alert_duration_ms / 1000).toFixed(0)} seconds</span>
+              Alert duration: <span className="text-[color:var(--sl-accent)]">{(view.alert_duration_ms / 1000).toFixed(0)} seconds</span>
             </label>
             <input
               id="alert-duration"
@@ -314,7 +316,7 @@ export default function ManageInteractionsClient() {
               step={1000}
               value={view.alert_duration_ms}
               onChange={(e) => set("alert_duration_ms", Number(e.target.value))}
-              className="mt-3 w-full accent-[#5EEAD4]"
+              className="mt-3 w-full accent-[color:var(--sl-accent)]"
             />
             <p className="mt-5 text-sm font-medium text-white">Position on screen</p>
             <div className="mt-3 grid max-w-[260px] grid-cols-3 gap-2" role="radiogroup" aria-label="Alert position">
@@ -328,7 +330,7 @@ export default function ManageInteractionsClient() {
                   onClick={() => set("alert_position", pos)}
                   className={`h-10 rounded-lg border text-[10px] uppercase tracking-wider ${
                     pos === "center" ? "col-span-3" : ""
-                  } ${view.alert_position === pos ? "border-[#5EEAD4]/50 bg-[#5EEAD4]/15 text-[#5EEAD4]" : "border-white/10 bg-white/[0.03] text-white/50 hover:text-white"}`}
+                  } ${view.alert_position === pos ? "border-[color:var(--sl-accent)] bg-[color:var(--sl-accent-soft)] text-[color:var(--sl-accent)]" : "border-white/10 bg-white/[0.03] text-white/50 hover:text-white"}`}
                 >
                   {pos.replace("-", " ")}
                 </button>
@@ -391,12 +393,12 @@ export default function ManageInteractionsClient() {
               <div>
                 <label className="st-label" htmlFor="rate">Speed: {Number(view.announcer_rate).toFixed(2)}×</label>
                 <input id="rate" type="range" min={0.5} max={2} step={0.05} value={view.announcer_rate}
-                  onChange={(e) => set("announcer_rate", Number(e.target.value))} className="mt-2 w-full accent-[#5EEAD4]" />
+                  onChange={(e) => set("announcer_rate", Number(e.target.value))} className="mt-2 w-full accent-[color:var(--sl-accent)]" />
               </div>
               <div>
                 <label className="st-label" htmlFor="volume">Volume: {Math.round(Number(view.announcer_volume) * 100)}%</label>
                 <input id="volume" type="range" min={0} max={1} step={0.05} value={view.announcer_volume}
-                  onChange={(e) => set("announcer_volume", Number(e.target.value))} className="mt-2 w-full accent-[#5EEAD4]" />
+                  onChange={(e) => set("announcer_volume", Number(e.target.value))} className="mt-2 w-full accent-[color:var(--sl-accent)]" />
               </div>
             </div>
             <button type="button" onClick={testAnnouncement} className="st-btn-ghost mt-5 px-5 py-2.5 text-sm">

@@ -190,3 +190,34 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
 $$;
 REVOKE ALL ON FUNCTION public.get_public_page_extras(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_public_page_extras(text) TO anon, authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- 8. Admin: revenue by payment source (service role only; the admin API gates
+--    callers with role + MFA). External links are reported, never counted as
+--    platform revenue.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.sl_admin_source_breakdown(p_from timestamptz, p_to timestamptz)
+RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+  SELECT jsonb_build_object(
+    'STREAMLOUNGE_QR', (SELECT jsonb_build_object(
+        'count', count(*),
+        'gross_paise', coalesce(sum(amount_paise), 0),
+        'refunded_paise', coalesce(sum(refunded_paise), 0),
+        'platform_fee_paise', coalesce(sum(platform_fee_paise), 0),
+        'gateway_fee_paise', coalesce(sum(gateway_fee_paise), 0),
+        'creator_share_paise', coalesce(sum(creator_share_paise), 0))
+      FROM public.payments
+      WHERE captured_at >= coalesce(p_from, '-infinity') AND captured_at < coalesce(p_to, 'infinity')),
+    'platform_revenue_net_paise', (SELECT coalesce(sum(amount_paise), 0) FROM public.ledger_entries
+      WHERE account = 'platform_revenue' AND created_at >= coalesce(p_from, '-infinity') AND created_at < coalesce(p_to, 'infinity')),
+    'EXTERNAL_RAZORPAY_LINK', (SELECT jsonb_build_object(
+        'count', count(*),
+        'gross_paise', coalesce(sum(amount_paise), 0),
+        'platform_fee_paise', 0,
+        'creators', count(DISTINCT creator_id))
+      FROM public.external_payments
+      WHERE captured_at >= coalesce(p_from, '-infinity') AND captured_at < coalesce(p_to, 'infinity'))
+  )
+$$;
+REVOKE ALL ON FUNCTION public.sl_admin_source_breakdown(timestamptz, timestamptz) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.sl_admin_source_breakdown(timestamptz, timestamptz) TO service_role;

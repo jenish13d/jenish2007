@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { formatRupees } from "@/app/component/studio/StudioShell";
 import { STUDIO_CSS } from "@/app/component/studio/theme";
+import { LogoMark } from "@/app/component/ui/icons";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { loginUrl, resolveClientAuth } from "@/lib/supabase/client-auth";
 import LoadError from "@/app/component/LoadError";
@@ -99,12 +100,12 @@ export default function MeClient() {
   const progress = Math.max(0, Math.min(100, (balance / per) * 100));
 
   return (
-    <div className="st-root min-h-screen">
+    <div className="sl st-root min-h-screen" data-theme="dark">
       <style>{STUDIO_CSS}</style>
       <div className="st-ambient" aria-hidden="true"><span className="st-orb st-orb-1" /><span className="st-orb st-orb-2" /><span className="st-grid" /></div>
       <main className="relative mx-auto max-w-[900px] px-5 py-8 md:px-8">
         <nav className="flex items-center justify-between">
-          <Link href="/" className="text-xl font-semibold tracking-tight"><span className="text-[#6CCEB0]">ϟ</span> Stream<span className="text-[#C7B8F0]">Lounge</span></Link>
+          <Link href="/" className="inline-flex items-center gap-2.5"><LogoMark /><span className="sl-wordmark">STREAMLOUNGE</span></Link>
           <Link href="/loungeboard" className="st-btn-ghost">LoungeBoard</Link>
         </nav>
         <header className="st-rise mt-10">
@@ -125,12 +126,12 @@ export default function MeClient() {
                 </button>
               </div>
               <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
-                <div className="h-full rounded-full bg-gradient-to-r from-[#5EEAD4] to-[#A78BFA]" style={{ width: `${progress}%` }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-[#C8A878] to-[#A78BFA]" style={{ width: `${progress}%` }} />
               </div>
               <p className="st-muted mt-2 text-sm">
                 {balance >= per ? "You can redeem now." : `${(per - balance).toLocaleString("en-IN")} points to your next ${formatRupees(points.redemption_value_paise)} reward.`}
               </p>
-              {message && <p className="mt-3 text-sm text-[#5EEAD4]">{message}</p>}
+              {message && <p className="mt-3 text-sm text-[#C8A878]">{message}</p>}
               <details className="mt-4 text-sm text-white/70">
                 <summary className="cursor-pointer text-white">How LoungePoints work</summary>
                 <ul className="st-muted mt-2 list-disc space-y-1 pl-5 text-xs leading-5">
@@ -150,7 +151,7 @@ export default function MeClient() {
                   {entries.map((e) => (
                     <li key={e.id} className="flex items-center justify-between py-2 text-sm">
                       <span className="text-white/80">{KIND_LABEL[e.kind] ?? e.kind} <span className="st-muted text-xs">· {new Date(e.created_at).toLocaleDateString("en-IN")}</span></span>
-                      <span className={e.points > 0 ? "text-[#5EEAD4]" : "text-red-300"}>{e.points > 0 ? "+" : ""}{e.points.toLocaleString("en-IN")}</span>
+                      <span className={e.points > 0 ? "text-[#C8A878]" : "text-red-300"}>{e.points > 0 ? "+" : ""}{e.points.toLocaleString("en-IN")}</span>
                     </li>
                   ))}
                 </ul>

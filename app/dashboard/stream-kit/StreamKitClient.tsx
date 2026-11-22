@@ -7,7 +7,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 import ConnectionsPanel from "./ConnectionsPanel";
 
-type Tool = "obs" | "streamlabs" | "streamyard";
+type Tool = "obs" | "streamlabs" | "streamyard" | "youtube";
 
 const GUIDES: Record<Tool, { name: string; steps: string[]; note: string }> = {
   obs: {
@@ -41,6 +41,16 @@ const GUIDES: Record<Tool, { name: string; steps: string[]; note: string }> = {
       "For live alerts and spoken announcements, run OBS with the Alerts URL and bring it into StreamYard as a camera via OBS Virtual Camera.",
     ],
     note: "StreamYard doesn't load live browser-source URLs, so live alerts can't run inside StreamYard directly. The QR overlay works as an uploaded image.",
+  },
+  youtube: {
+    name: "YouTube",
+    steps: [
+      "Set up OBS or Streamlabs with the Alerts, Ticker and QR URLs above.",
+      "In YouTube Studio, choose Go live → Stream and copy the stream key into OBS or Streamlabs.",
+      "Start streaming. Viewers scan the on-screen QR to send superchats that appear and are read aloud on stream.",
+      "Optionally add your StreamLounge link, or your own Razorpay link from Finance, to the video description.",
+    ],
+    note: "No YouTube account connection is needed. StreamLounge runs inside your streaming software, so it works with YouTube exactly as it does with Twitch or Kick.",
   },
 };
 
@@ -131,23 +141,22 @@ export default function StreamKitClient() {
       session={session}
       authError={authError}
       onRetry={retryAuth}
-      eyebrow="Creator studio"
-      title="Your stream"
-      accent="kit."
-      subtitle="Your payment link, QR code and overlay URLs for OBS, Streamlabs and StreamYard."
+      eyebrow="Broadcast · Stream Setup"
+      title="Stream Setup"
+      subtitle="Overlay URLs, QR code and setup guides for OBS, Streamlabs and StreamYard. Works with YouTube, Twitch and Kick."
       toast={toast}
     >
       {!username ? (
         <div className="st-glass p-8">
           <h2 className="st-h2 !text-lg">Pick a username first</h2>
-          <p className="st-muted mt-2 text-sm">Your payment link and QR code use your username. Set one on the Creator Page.</p>
+          <p className="st-muted mt-2 text-sm">Your page link and QR code use your username. Set one in Customization.</p>
         </div>
       ) : (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
           <div className="space-y-6">
-            <Panel title="Payment link" subtitle="Put it in your YouTube description, Twitch panels, Kick profile and socials." delay={60}>
+            <Panel title="Your StreamLounge link" subtitle="The page your QR code opens. Payments here carry the 8% StreamLounge platform fee and trigger on-stream alerts." delay={60}>
               {!publicPage && (
-                <p className="mb-4 rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+                <p className="mb-4 rounded-md px-4 py-3 text-sm" style={{ background: "var(--sl-accent-soft)", color: "var(--sl-accent)" }}>
                   Your creator page is private, so this link and QR code won&apos;t work for viewers until you make it public.
                 </p>
               )}
@@ -155,13 +164,17 @@ export default function StreamKitClient() {
                 <code className="st-field flex-1 overflow-x-auto whitespace-nowrap">{payLink}</code>
                 <button type="button" className="st-btn-mint !py-3" onClick={() => copy(payLink, "Payment link")}>Copy link</button>
               </div>
+              <p className="st-muted mt-3 text-xs leading-5">
+                For video descriptions you can also use your own Razorpay link, with no StreamLounge commission. Set it up in{" "}
+                <a href="/dashboard/finance" className="underline underline-offset-2">Finance</a>. Payments through your own link don&apos;t trigger on-stream alerts.
+              </p>
             </Panel>
 
             <Panel
               title="Overlay URLs"
               subtitle="Each URL is a browser source. Keep them private: anyone with the alerts URL can read your alert queue."
               delay={120}
-              right={<button type="button" className="text-xs text-[#5EEAD4]" onClick={() => setRevealed((r) => !r)}>{revealed ? "Hide keys" : "Show keys"}</button>}
+              right={<button type="button" className="text-xs" style={{ color: "var(--sl-accent)" }} onClick={() => setRevealed((r) => !r)}>{revealed ? "Hide keys" : "Show keys"}</button>}
             >
               {([
                 ["alerts", "Alerts + announcer", "Add once. Shows superchats and reads them aloud."],
@@ -177,7 +190,7 @@ export default function StreamKitClient() {
                   </div>
                 </div>
               ))}
-              <button type="button" onClick={rotateKey} className="mt-4 text-xs text-red-300 hover:underline">
+              <button type="button" onClick={rotateKey} className="mt-4 text-xs hover:underline" style={{ color: "var(--sl-danger)" }}>
                 Leaked a URL on stream? Rotate the key
               </button>
             </Panel>
@@ -200,8 +213,8 @@ export default function StreamKitClient() {
               <ol className="space-y-3">
                 {GUIDES[tool].steps.map((step, i) => (
                   <li key={step} className="st-step">
-                    <span className="text-xs font-semibold text-[#5EEAD4]">{String(i + 1).padStart(2, "0")}</span>
-                    <span className="text-sm text-white/85">{step}</span>
+                    <span className="sl-mono text-xs" style={{ color: "var(--sl-accent)" }}>{String(i + 1).padStart(2, "0")}</span>
+                    <span className="text-sm">{step}</span>
                   </li>
                 ))}
               </ol>

@@ -29,7 +29,7 @@ async function platformBounds(supabase: Awaited<ReturnType<typeof createSupabase
     message_limit_default: data?.message_limit_default ?? 50,
     message_limit_min: data?.message_limit_min ?? 10,
     message_limit_max: data?.message_limit_max ?? 200,
-    platform_fee_bps: data?.platform_fee_bps ?? 1000,
+    platform_fee_bps: data?.platform_fee_bps ?? 800,
     gateway_fee_bearer: data?.gateway_fee_bearer ?? "platform",
     settlement_hold_days: data?.settlement_hold_days ?? 7,
     min_payout_paise: data?.min_payout_paise ?? 50000,

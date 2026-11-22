@@ -91,9 +91,8 @@ export default function PayoutsClient() {
       session={session}
       authError={authError}
       onRetry={retryAuth}
-      eyebrow="Creator studio"
-      title="Earnings &"
-      accent="payouts."
+      eyebrow="Money · Payouts"
+      title="Payouts"
       subtitle="What you've earned, what's on hold, and every withdrawal — straight from the ledger."
       toast={toast}
     >
@@ -107,7 +106,7 @@ export default function PayoutsClient() {
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <Stat label="Available" value={b ? formatRupees(b.available_paise) : "—"} hint="Ready to withdraw" delay={40} />
             <Stat label="Pending" value={b ? formatRupees(b.pending_paise) : "—"} hint="Settlement hold" color="#FBBF24" delay={80} />
-            <Stat label="Total earned" value={b ? formatRupees(b.earned_paise) : "—"} hint="After platform fee and refunds" color="#A78BFA" delay={120} />
+            <Stat label="Total earned" value={b ? formatRupees(b.earned_paise) : "—"} hint="After the StreamLounge QR fee and refunds" color="#A78BFA" delay={120} />
             <Stat label="Paid out" value={b ? formatRupees(b.paid_out_paise) : "—"} hint="Confirmed by payout partner" color="#60A5FA" delay={160} />
             <Stat label="Superchats" value={s ? String(s.superchats) : "—"} delay={200} />
             <Stat label="Supporters" value={s ? String(s.supporters) : "—"} delay={240} />
@@ -132,7 +131,7 @@ export default function PayoutsClient() {
                             <td className="py-2 pr-3 text-white/70">{when(p.captured_at)}</td>
                             <td className="pr-3 text-white">{p.display_name}</td>
                             <td className="pr-3">{formatRupees(p.amount_paise)}</td>
-                            <td className="pr-3 text-[#5EEAD4]">{formatRupees(p.creator_share_paise)}</td>
+                            <td className="pr-3 text-[color:var(--sl-accent)]">{formatRupees(p.creator_share_paise)}</td>
                             <td className="text-white/70">{p.status.replace("_", " ")}</td>
                           </tr>
                         ))}
@@ -197,7 +196,7 @@ export default function PayoutsClient() {
                     {s.top_supporters.map((t, i) => (
                       <li key={t.display_name + i} className="flex items-center justify-between text-sm">
                         <span className="text-white"><span className="st-muted mr-2 text-xs">{i + 1}</span>{t.display_name}</span>
-                        <span className="text-[#5EEAD4]">{formatRupees(t.total_paise)}</span>
+                        <span className="text-[color:var(--sl-accent)]">{formatRupees(t.total_paise)}</span>
                       </li>
                     ))}
                   </ol>

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { AuthFrame } from "@/app/component/auth/AuthFrame";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 /**
@@ -54,58 +54,17 @@ export default function ResetPasswordClient() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#0A2137] px-4 text-white">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-white/5 p-6"
-      >
-        <Link href="/" className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-xl text-[#6CCEB0]">ϟ</span>
-          <span className="text-xl font-medium tracking-tight">
-            Stream<span className="text-[#6CCEB0]">Lounge</span>
-          </span>
-        </Link>
-        <h1 className="text-xl font-semibold">Choose a new password</h1>
-
-        {done ? (
-          <p className="text-sm text-emerald-300">Password updated. Taking you to your dashboard…</p>
-        ) : (
-          <>
-            <label className="block text-sm">
-              New password
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              Confirm password
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={confirm}
-                onChange={(event) => setConfirm(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2"
-              />
-            </label>
-            {error ? <p className="text-sm text-red-300">{error}</p> : null}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-[#4D8AFF] px-4 py-2 font-medium disabled:opacity-60"
-            >
-              {loading ? "Saving…" : "Save password"}
-            </button>
-          </>
-        )}
-
-        <p className="text-center text-sm text-white/60">
-          <Link href="/login" className="underline">Back to sign in</Link>
-        </p>
-      </form>
-    </main>
+    <AuthFrame title="Choose a new password" subtitle="Use at least 8 characters. You'll be signed in afterwards.">
+      {done ? (
+        <p role="status" className="rounded-md p-3 text-[13px]" style={{ background: "var(--sl-success-soft)", color: "var(--sl-success)" }}>Password updated. Taking you to your studio…</p>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <label className="block"><span className="sl-label">New password</span><input className="sl-input" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} /></label>
+          <label className="block"><span className="sl-label">Confirm password</span><input className="sl-input" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} /></label>
+          {error && <p role="alert" className="rounded-md p-3 text-[13px]" style={{ background: "var(--sl-danger-soft)", color: "var(--sl-danger)" }}>{error}</p>}
+          <button type="submit" className="sl-btn sl-btn-primary sl-btn-lg w-full" disabled={loading}>{loading ? "Saving…" : "Update password"}</button>
+        </form>
+      )}
+    </AuthFrame>
   );
 }

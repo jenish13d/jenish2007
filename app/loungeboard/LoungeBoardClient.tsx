@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { formatRupees } from "@/app/component/studio/StudioShell";
 import { STUDIO_CSS } from "@/app/component/studio/theme";
+import { LogoMark } from "@/app/component/ui/icons";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type Scope = "global" | "continent" | "country" | "state" | "district" | "city";
@@ -75,7 +76,7 @@ export default function LoungeBoardClient() {
   const rest = rows?.slice(3) ?? [];
 
   return (
-    <div className="st-root min-h-screen">
+    <div className="sl st-root min-h-screen" data-theme="dark">
       <style>{STUDIO_CSS}</style>
       <div className="st-ambient" aria-hidden="true">
         <span className="st-orb st-orb-1" />
@@ -85,8 +86,9 @@ export default function LoungeBoardClient() {
       </div>
       <main className="relative mx-auto max-w-[1100px] px-5 py-8 md:px-8">
         <nav className="flex items-center justify-between">
-          <Link href="/" className="text-xl font-semibold tracking-tight">
-            <span className="text-[#6CCEB0]">ϟ</span> Stream<span className="text-[#C7B8F0]">Lounge</span>
+          <Link href="/" className="inline-flex items-center gap-2.5">
+            <LogoMark />
+            <span className="sl-wordmark">STREAMLOUNGE</span>
           </Link>
           <Link href="/me" className="st-btn-ghost">My LoungePoints</Link>
         </nav>
@@ -103,7 +105,7 @@ export default function LoungeBoardClient() {
           <div className="flex flex-wrap justify-center gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1" role="tablist" aria-label="Area">
             {SCOPES.map((s) => (
               <button key={s.id} type="button" role="tab" aria-selected={scope === s.id} onClick={() => setScope(s.id)}
-                className={`rounded-full px-4 py-2 text-sm ${scope === s.id ? "bg-[#5EEAD4]/15 text-[#5EEAD4]" : "text-white/60 hover:text-white"}`}>
+                className={`rounded-full px-4 py-2 text-sm ${scope === s.id ? "bg-[#C8A878]/15 text-[#C8A878]" : "text-white/60 hover:text-white"}`}>
                 {s.label}
               </button>
             ))}
@@ -145,7 +147,7 @@ export default function LoungeBoardClient() {
                         ? <img src={r.profile_image_url} alt="" className="h-full w-full object-cover" />
                         : r.creator_name.slice(0, 1).toUpperCase()}
                     </div>
-                    <Link href={`/${r.username}`} className="mt-3 block font-medium text-white hover:text-[#5EEAD4]">{r.creator_name}</Link>
+                    <Link href={`/${r.username}`} className="mt-3 block font-medium text-white hover:text-[#C8A878]">{r.creator_name}</Link>
                     <p className="st-muted text-xs">@{r.username}{r.location ? ` · ${placeName(scope, r.location)}` : ""}</p>
                     <p className="mt-3 text-2xl font-medium tracking-tight text-white">{formatRupees(r.total_paise)}</p>
                     <p className="st-muted text-xs">{r.superchats} superchats</p>
@@ -158,7 +160,7 @@ export default function LoungeBoardClient() {
                 {rest.map((r) => (
                   <li key={r.username} className="flex items-center gap-4 px-5 py-3">
                     <span className="w-8 text-sm text-white/50">#{r.rank}</span>
-                    <Link href={`/${r.username}`} className="min-w-0 flex-1 truncate text-white hover:text-[#5EEAD4]">
+                    <Link href={`/${r.username}`} className="min-w-0 flex-1 truncate text-white hover:text-[#C8A878]">
                       {r.creator_name} <span className="st-muted text-xs">@{r.username}</span>
                     </Link>
                     <span className="st-muted hidden text-xs sm:inline">{r.superchats} superchats</span>
