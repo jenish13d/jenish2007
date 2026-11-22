@@ -1,378 +1,254 @@
-
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
-const features = [
-  { icon: "💬", title: "Text to Speech", description: "Turn viewer messages into part of the show with interactive text and voice." },
-  { icon: "🎙️", title: "Voice Messages", description: "Let your community become part of the action with audio interactions." },
-  { icon: "🔊", title: "Soundboard", description: "Bring unexpected sounds and memorable moments straight into your stream." },
-  { icon: "◉", title: "Spin the Wheel", description: "Add an element of chance and let your viewers influence what happens next." },
-  { icon: "🎯", title: "Live Challenges", description: "Turn ordinary gameplay into a shared experience with viewer-triggered tasks." },
+import { MarketingPage, Sculpture } from "@/app/component/marketing/Chrome";
+import { FeeCards } from "@/app/component/marketing/FeeCards";
+import { Icon, type IconName } from "@/app/component/ui/icons";
+
+/**
+ * Public homepage. Server-rendered, no client JavaScript beyond Next's router.
+ * Everything stated here is something the product actually does; there are no
+ * user counts, testimonials or certifications.
+ */
+
+const CAPABILITIES: { n: string; title: string; body: string }[] = [
+  { n: "01", title: "On-screen QR superchats", body: "Viewers scan the code on your stream, pick an amount and send a message. No viewer account required." },
+  { n: "02", title: "Alerts, read aloud", body: "Paid messages appear on stream and are announced by the StreamLounge voice, with an emergency mute one click away." },
+  { n: "03", title: "Overlays that stay out of the way", body: "Alerts, a ticker and a QR panel as browser sources for OBS and Streamlabs. Private URLs you can revoke." },
+  { n: "04", title: "Earnings you can audit", body: "Every rupee recorded once, on an append-only ledger, with refunds, disputes and payouts reconciled against it." },
 ];
 
-const questions = [
+const STEPS: { title: string; body: string }[] = [
+  { title: "Set up your page", body: "Choose a username, prices and message length. Your page lives at streamlounge/c/you." },
+  { title: "Add the overlay", body: "Paste one browser-source URL into OBS or Streamlabs. The QR code, alerts and ticker run from it." },
+  { title: "Go live anywhere", body: "Stream to YouTube, Twitch or Kick as usual. Viewers scan, pay and appear on stream within seconds." },
+];
+
+const TRUST: { icon: IconName; title: string; body: string }[] = [
+  { icon: "shield", title: "Payments verified on the server", body: "Every payment is confirmed with Razorpay before an alert plays or a rupee is credited. Amounts and fees are never taken from the browser." },
+  { icon: "lock", title: "An append-only ledger", body: "Money movements are written once and never edited. Corrections are new, audited entries with a reason attached." },
+  { icon: "link", title: "Private, revocable overlay URLs", body: "Your browser-source link carries a secret key. Rotate it any time and the old one stops working immediately." },
+  { icon: "eye", title: "Your supporters stay private", body: "Supporters choose the name shown on stream. Their account details are never shown to creators or other viewers." },
+];
+
+const FAQ: { q: string; a: string }[] = [
   {
-    q: "What is StreamLounge?",
-    a: "StreamLounge is an interactive platform designed to help creators make their live streams more engaging through viewer-powered experiences.",
+    q: "What does StreamLounge charge?",
+    a: "8% of each superchat paid through your StreamLounge QR code or page. On a ₹1,000 superchat that is ₹80, and your share is ₹920. Payment gateway charges and applicable taxes are shown separately in your finance reports.",
+  },
+  {
+    q: "Can I use my own Razorpay payment link?",
+    a: "Yes. Put your own Razorpay link in your YouTube or Twitch description and StreamLounge takes no commission on those payments: they go straight to your Razorpay account. Razorpay's own charges still apply on your account.",
+  },
+  {
+    q: "Does it work on YouTube?",
+    a: "Yes. StreamLounge runs as a browser source in OBS or Streamlabs, so it works with whatever platform you stream to, including YouTube, Twitch and Kick. No YouTube account connection is needed.",
   },
   {
     q: "Do my viewers need an account?",
-    a: "The experience is designed to let viewers participate through a unique link or QR code, without requiring a viewer account.",
+    a: "No. Viewers can pay with UPI, cards and other Razorpay methods without signing up. An optional supporter account keeps their history and LoungePoints in one place.",
   },
   {
-    q: "Can I use StreamLounge with OBS?",
-    a: "StreamLounge is designed with OBS-compatible streaming workflows in mind. Available integrations depend on the features configured in your project.",
+    q: "When can I withdraw?",
+    a: "Earnings become available after a short settlement hold, shown in your Finance page. Withdrawals are enabled once payouts are switched on for your account.",
   },
 ];
 
 export default function Home() {
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
-  
-  
-useEffect(() => {
-  const elements = document.querySelectorAll(
-    ".ss-scroll-reveal"
-  );
-
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("ss-scroll-visible");
-          observer.unobserve(entry.target);
-        }
-      });
-    },
-    {
-      threshold: 0.1,
-      rootMargin: "0px 0px -30px 0px",
-    }
-  );
-
-  elements.forEach((element) => {
-    observer.observe(element);
-  });
-
-  return () => observer.disconnect();
-},
- []);
-
-
   return (
-    <main className="ss-page min-h-screen overflow-hidden text-white">
-      {/* NAVIGATION */}
-      <nav className="ss-nav sticky top-0 z-50 border-b border-white/10">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="ss-logo text-2xl font-semibold tracking-tight">
-            <span className="ss-mint">ϟ</span> Stream<span className="ss-lilac">Lounge</span>
-          </Link>
-
-          <div className="hidden items-center gap-8 text-sm text-white/65 md:flex">
-            <a href="#home" className="transition hover:text-white">Home</a>
-            <a href="#features" className="transition hover:text-white">Features</a>
-            <a href="#for-creators" className="transition hover:text-white">For Creators</a>
-            <a href="#pricing" className="transition hover:text-white">Pricing</a>
-            <a href="#faq" className="transition hover:text-white">FAQ</a>
-          </div>
-
-          <Link href="/login" className="ss-button-secondary rounded-full px-5 py-2.5 text-sm font-medium">
-            Log in <span aria-hidden="true">↗</span>
-          </Link>
-        </div>
-      </nav>
-
-      {/* HERO */}
-      <section id="home" className="ss-hero relative">
-        <div className="ss-orb ss-orb-one" />
-        <div className="ss-orb ss-orb-two" />
-
-        <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-16 px-6 py-24 md:min-h-[690px] md:grid-cols-[1.1fr_0.9fr] md:py-28">
-          <div className="ss-reveal">
-            <div className="ss-pill mb-8 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm">
-              <span className="ss-status-dot" />
-              Made for the next generation of creators
-            </div>
-
-            <h1 className="max-w-3xl text-5xl font-medium leading-[1.06] tracking-[-0.055em] sm:text-6xl md:text-7xl lg:text-[82px]">
-              Your stream.
-              <br />
-              Their <span className="ss-gradient-text">world.</span>
-            </h1>
-
-            <p className="mt-7 max-w-xl text-base leading-8 text-white/60 md:text-lg">
-              Turn passive viewers into active participants. Bring your
-              community into the action and make every stream feel different.
-            </p>
-
-            <div className="mt-9 flex flex-wrap gap-4">
-              <Link href="/signup" className="ss-button-primary rounded-full px-7 py-4 font-semibold">
-                Start creating <span className="ml-2">↗</span>
-              </Link>
-              <a href="#features" className="ss-button-secondary rounded-full px-7 py-4 font-medium">
-                Explore the experience <span className="ml-2">↓</span>
-              </a>
-            </div>
-
-            <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm text-white/55">
-              <span><span className="ss-mint mr-2">✓</span>Viewer-friendly access</span>
-              <span><span className="ss-mint mr-2">✓</span>Unique links & QR codes</span>
-              <span><span className="ss-mint mr-2">✓</span>OBS-focused workflow</span>
-            </div>
-          </div>
-
-          {/* INTERACTIVE-STYLE STREAM PREVIEW */}
-          <div className="ss-reveal ss-reveal-delay relative">
-            <div className="ss-preview-glow" />
-
-            <div className="ss-preview relative">
-              <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-                <div className="flex items-center gap-2.5">
-                  <span className="ss-avatar">S</span>
-                  <div>
-                    <p className="text-sm font-medium">Your stream, reimagined</p>
-                    <p className="text-xs text-white/45">Community control center</p>
-                  </div>
-                </div>
-                <span className="ss-live rounded-full px-3 py-1 text-xs font-medium">
-                  <span className="mr-1.5">●</span> LIVE
-                </span>
-              </div>
-
-              <div className="ss-preview-screen m-4 rounded-2xl p-5 sm:p-7">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs tracking-[0.2em] text-white/55">LIVE EXPERIENCE</span>
-                  <span className="text-xs text-white/55">STREAM_001</span>
-                </div>
-
-                <div className="ss-visualizer my-8 flex h-24 items-center justify-center gap-1.5">
-                  {Array.from({ length: 31 }, (_, i) => (
-                    <span
-                      key={i}
-                      className="ss-wave"
-                      style={{
-                        height: `${15 + ((i * 17 + 11) % 75)}%`,
-                        animationDelay: `${(i % 8) * -0.17}s`,
-                      }}
-                    />
-                  ))}
-                </div>
-
-                <div className="flex items-end justify-between gap-3">
-                  <div>
-                    <p className="text-2xl font-medium tracking-tight">You&apos;re in control.</p>
-                    <p className="mt-1 text-sm text-white/50">Your audience makes the moment.</p>
-                  </div>
-                  <span className="ss-mint text-2xl">↗</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 px-4 pb-4">
-                {[
-                  ["💬", "Messages"],
-                  ["🎙️", "Voice"],
-                  ["🎡", "Challenges"],
-                ].map(([icon, label]) => (
-                  <div key={label} className="ss-mini-card rounded-xl p-3 text-center">
-                    <span className="block text-xl">{icon}</span>
-                    <span className="mt-2 block text-xs text-white/65">{label}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="ss-preview-bottom flex items-center justify-between px-5 py-3 text-xs text-white/45">
-                <span>CREATOR DASHBOARD</span>
-                <span className="ss-mint">Built around interaction</span>
-              </div>
-            </div>
-
-            <div className="ss-float-tag ss-float-top">✦ More interaction</div>
-            <div className="ss-float-tag ss-float-bottom">↗ Made for your community</div>
-          </div>
-        </div>
-
-        <div className="ss-marquee border-y border-white/[0.08] py-4">
-          <div className="ss-marquee-track">
-            {Array.from({ length: 2 }, (_, group) => (
-              <div className="flex shrink-0 items-center gap-8 px-4" key={group}>
-                {["TEXT", "AUDIO", "SOUNDBOARD", "SPIN THE WHEEL", "LIVE TASKS"].map((item) => (
-                  <span key={item} className="flex items-center gap-8 text-xs font-medium tracking-[0.22em] text-white/45">
-                    {item}<span className="ss-mint text-base">✳</span>
-                  </span>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FEATURES */}
-      <section id="features" className="ss-section ss-scroll-reveal px-6 py-24 md:py-32">
-        <div className="mx-auto max-w-7xl">
-          <div className="ss-section-heading mb-14 grid gap-5 md:grid-cols-2 md:items-end">
-            <div>
-              <p className="ss-eyebrow">01 / THE EXPERIENCE</p>
-              <h2 className="mt-5 max-w-2xl text-4xl font-medium leading-tight tracking-[-0.04em] sm:text-5xl md:text-6xl">
-                More than a stream.
-                <br />
-                <span className="ss-muted-heading">A shared experience.</span>
-              </h2>
-            </div>
-            <p className="max-w-lg leading-7 text-white/55 md:justify-self-end">
-              Every interaction gives your audience a reason to stay,
-              participate, and become part of the story.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature, i) => (
-              <article key={feature.title} className="ss-feature-card ss-scroll-reveal group rounded-2xl p-7">
-                <div className="flex items-start justify-between">
-                  <span className="ss-feature-icon flex h-12 w-12 items-center justify-center rounded-xl text-2xl">
-                    {feature.icon}
-                  </span>
-                  <span className="text-sm text-white/25 transition group-hover:text-[#6CCEB0]">
-                    0{i + 1} ↗
-                  </span>
-                </div>
-
-                <h3 className="mt-8 text-xl font-medium tracking-tight">{feature.title}</h3>
-                <p className="mt-3 text-sm leading-7 text-white/50">{feature.description}</p>
-
-                <div className="ss-card-line mt-7 h-px w-full" />
-                <p className="mt-4 text-xs tracking-wide text-white/40">
-                  MADE FOR PARTICIPATION
-                </p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FOR CREATORS */}
-      <section id="for-creators"className="ss-section ss-scroll-reveal">
-        <div className="mx-auto grid max-w-7xl items-center gap-12 md:grid-cols-2">
-          <div>
-            <p className="ss-eyebrow">02 / YOUR COMMUNITY</p>
-            <h2 className="mt-5 text-4xl font-medium leading-tight tracking-[-0.04em] sm:text-5xl md:text-6xl">
-              Give viewers
-              <br />
-              a seat in the show.
-            </h2>
-            <p className="mt-6 max-w-xl leading-8 text-white/55">
-              Your community should do more than watch. Give them new ways
-              to shape moments, spark reactions, and participate in your content.
-            </p>
-            <Link href="/signup" className="ss-button-primary mt-8 inline-flex rounded-full px-7 py-4 font-semibold">
-              Build your experience <span className="ml-2">↗</span>
-            </Link>
-          </div>
-
-          <div className="ss-community-panel ss-community rounded-3xl p-6 sm:p-8">
-            <div className="flex items-center justify-between border-b border-white/10 pb-5">
-              <div>
-                <p className="text-sm font-medium">Community activity</p>
-                <p className="mt-1 text-xs text-white/45">A glimpse of the experience</p>
-              </div>
-              <span className="ss-status-dot" />
-            </div>
-
-            {[
-              ["A", "Alex", "Sent a message", "💬"],
-              ["M", "Morgan", "Triggered a sound", "🔊"],
-              ["J", "Jamie", "Started a challenge", "🎯"],
-              ["R", "Riley", "Sent an emoji reaction", "😀"],
-            ].map(([initial, name, action, icon], i) => (
-              <div key={name} className="ss-activity-row flex items-center gap-4 py-5" style={{ animationDelay: `${i * 0.12}s` }}>
-                <span className="ss-avatar">{initial}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{name}</p>
-                  <p className="mt-1 text-xs text-white/45">{action}</p>
-                </div>
-                <span className="text-xl">{icon}</span>
-              </div>
-            ))}
-
-            <div className="ss-activity-note mt-2 rounded-xl p-4 text-sm text-white/65">
-              <span className="ss-mint mr-2">✳</span>
-              Every viewer can bring a new moment.
-            </div>
-          </div>
-        </div>
-      </section>
-     <section id="faq" className="ss-section ss-scroll-reveal mt-24">
-        <div className="mx-auto grid max-w-7xl gap-12 md:grid-cols-[0.8fr_1.2fr]">
-          <div>
-            <p className="ss-eyebrow">03 / QUESTIONS</p>
-            <h2 className="mt-5 text-4xl font-medium tracking-[-0.04em] sm:text-5xl">
-              A few things
-              <br />
-              worth knowing.
-            </h2>
-            <p className="mt-5 max-w-sm leading-7 text-white/50">
-              Everything you need to know before getting started.
-            </p>
-          </div>
-
-          <div>
-            {questions.map((item, i) => (
-              <div key={item.q} className="border-b border-white/10">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-5 py-6 text-left"
-                  aria-expanded={openFaq === i}
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                >
-                  <span className="text-base font-medium sm:text-lg">{item.q}</span>
-                  <span className={`ss-faq-icon ${openFaq === i ? "is-open" : ""}`}>+</span>
-                </button>
-
-                <div className={`ss-faq-answer ${openFaq === i ? "is-open" : ""}`}>
-                  <p className="pb-6 pr-8 text-sm leading-7 text-white/55">{item.a}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FINAL CTA */}
-      <section className="px-6 py-20">
-        <div className="ss-final-cta mx-auto max-w-7xl rounded-3xl px-6 py-16 text-center sm:px-12 md:py-20">
-          <p className="ss-eyebrow">YOUR STREAM, YOUR RULES</p>
-          <h2 className="mx-auto mt-5 max-w-3xl text-4xl font-medium tracking-[-0.045em] sm:text-5xl md:text-6xl">
-            Make the audience
+    <MarketingPage>
+      {/* ---------------------------------------------------------- hero */}
+      <section className="sl-grain relative -mt-20 overflow-hidden pt-20">
+        <Sculpture className="pointer-events-none absolute inset-0 h-full w-full" />
+        <div className="relative z-[2] mx-auto max-w-[1320px] px-5 pb-20 pt-16 md:px-10 md:pb-28 md:pt-28">
+          <p className="sl-kicker sl-kicker-rule sl-in">Creator monetization for live streams</p>
+          <h1 className="sl-display sl-in mt-8" style={{ ["--d" as string]: 80 }}>
+            Your stream.
             <br />
-            part of the action.
-          </h2>
-          <Link href="/signup" className="ss-button-primary mt-8 inline-flex rounded-full px-8 py-4 font-semibold">
-            Join StreamLounge <span className="ml-2">↗</span>
-          </Link>
+            <span className="sl-outline">Your community.</span>
+            <br />
+            Your earnings.
+          </h1>
+          <div className="mt-16 grid items-end gap-10 md:mt-24 md:grid-cols-[minmax(0,420px)_1fr]">
+            <div className="sl-in" style={{ ["--d" as string]: 160 }}>
+              <p className="sl-lead">
+                StreamLounge turns your audience&apos;s support into on-screen moments: QR superchats, messages read aloud and
+                overlays for OBS and Streamlabs, with earnings you can trace to the rupee.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link href="/signup" className="sl-btn sl-btn-primary sl-btn-lg sl-btn-mono">Get started</Link>
+                <Link href="/pricing" className="sl-btn sl-btn-lg">See the fees</Link>
+              </div>
+            </div>
+            <p className="sl-kicker justify-self-start md:justify-self-end">
+              Works with OBS · Streamlabs · StreamYard · YouTube · Twitch · Kick
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="border-t border-white/10 px-6 py-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/" className="ss-logo text-xl font-semibold">
-            <span className="ss-mint">ϟ</span> Stream<span className="ss-lilac">Lounge</span>
-          </Link>
-
-          <p className="text-sm text-white/40">
-            Sync your stream. Amplify every moment.
-          </p>
-
-          <div className="flex gap-5 text-sm text-white/50">
-            <a href="#features" className="transition hover:text-white">Features</a>
-            <a href="#faq" className="transition hover:text-white">FAQ</a>
-            <Link href="/login" className="transition hover:text-white">Login</Link>
+      {/* ------------------------------------------------- capabilities */}
+      <section id="product" className="border-t" style={{ borderColor: "var(--sl-line)" }}>
+        <div className="mx-auto max-w-[1320px] px-5 py-24 md:px-10">
+          <div className="grid gap-12 md:grid-cols-[1fr_1.6fr]">
+            <div>
+              <p className="sl-kicker sl-kicker-rule">The product</p>
+              <h2 className="sl-h1 mt-6 max-w-md">Built for the moment a viewer decides to support you.</h2>
+            </div>
+            <ol className="grid gap-px overflow-hidden rounded-[14px] border sm:grid-cols-2" style={{ borderColor: "var(--sl-line)", background: "var(--sl-line)" }}>
+              {CAPABILITIES.map((c) => (
+                <li key={c.n} className="p-7" style={{ background: "var(--sl-bg)" }}>
+                  <span className="sl-mono text-[12px]" style={{ color: "var(--sl-accent)" }}>{c.n}</span>
+                  <h3 className="mt-6 text-[17px] font-medium tracking-[-0.02em]">{c.title}</h3>
+                  <p className="sl-body sl-muted mt-2.5">{c.body}</p>
+                </li>
+              ))}
+            </ol>
           </div>
         </div>
-        <p className="mx-auto mt-7 max-w-7xl text-xs text-white/30">
-          © {new Date().getFullYear()} StreamLounge. All rights reserved.
-        </p>
-      </footer>
-    </main>
+      </section>
+
+      {/* ------------------------------------------------ studio preview */}
+      <section className="relative overflow-hidden border-t" style={{ borderColor: "var(--sl-line)" }}>
+        <div className="mx-auto max-w-[1320px] px-5 py-24 md:px-10">
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div>
+              <p className="sl-kicker sl-kicker-rule">Creator studio</p>
+              <h2 className="sl-h1 mt-6 max-w-xl">One place for superchats, overlays and money.</h2>
+            </div>
+            <p className="sl-body sl-muted max-w-sm">Arrange the overview the way you work. Hide what you don&apos;t use, keep what you check every stream.</p>
+          </div>
+          <StudioPreview />
+          <p className="sl-faint mt-3 text-[12px]">Illustration with example figures.</p>
+        </div>
+      </section>
+
+      {/* -------------------------------------------------- how it works */}
+      <section id="how" className="border-t" style={{ borderColor: "var(--sl-line)" }}>
+        <div className="mx-auto max-w-[1320px] px-5 py-24 md:px-10">
+          <p className="sl-kicker sl-kicker-rule">How it works</p>
+          <div className="mt-10 grid gap-10 md:grid-cols-3">
+            {STEPS.map((s, i) => (
+              <div key={s.title} className="border-t pt-6" style={{ borderColor: "var(--sl-line-2)" }}>
+                <span className="sl-mono text-[12px] sl-muted">Step {i + 1}</span>
+                <h3 className="sl-h2 mt-4">{s.title}</h3>
+                <p className="sl-body sl-muted mt-3 max-w-sm">{s.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------------- fees */}
+      <section className="border-t" style={{ borderColor: "var(--sl-line)" }}>
+        <div className="mx-auto grid max-w-[1320px] gap-12 px-5 py-24 md:grid-cols-[1fr_1.4fr] md:px-10">
+          <div>
+            <p className="sl-kicker sl-kicker-rule">Fees</p>
+            <h2 className="sl-h1 mt-6">Two channels. One clear rule.</h2>
+            <p className="sl-body sl-muted mt-5 max-w-sm">
+              We earn when the StreamLounge QR earns for you. Payments through your own Razorpay link are yours entirely.
+            </p>
+            <Link href="/pricing" className="sl-btn mt-8">Read the fee policy <Icon name="arrowRight" size={14} /></Link>
+          </div>
+          <FeeCards />
+        </div>
+      </section>
+
+      {/* --------------------------------------------------------- trust */}
+      <section className="border-t" style={{ borderColor: "var(--sl-line)" }}>
+        <div className="mx-auto max-w-[1320px] px-5 py-24 md:px-10">
+          <p className="sl-kicker sl-kicker-rule">How we handle money</p>
+          <div className="mt-10 grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
+            {TRUST.map((t) => (
+              <div key={t.title}>
+                <span className="grid h-9 w-9 place-items-center rounded-md border" style={{ borderColor: "var(--sl-line-2)", color: "var(--sl-accent)" }}>
+                  <Icon name={t.icon} />
+                </span>
+                <h3 className="mt-5 text-[15px] font-medium">{t.title}</h3>
+                <p className="sl-body sl-muted mt-2">{t.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ----------------------------------------------------------- faq */}
+      <section className="border-t" style={{ borderColor: "var(--sl-line)" }}>
+        <div className="mx-auto grid max-w-[1320px] gap-12 px-5 py-24 md:grid-cols-[1fr_1.6fr] md:px-10">
+          <div>
+            <p className="sl-kicker sl-kicker-rule">Questions</p>
+            <h2 className="sl-h1 mt-6">Straight answers.</h2>
+          </div>
+          <div className="border-t" style={{ borderColor: "var(--sl-line)" }}>
+            {FAQ.map((f) => (
+              <details key={f.q} className="sl-faq group border-b" style={{ borderColor: "var(--sl-line)" }}>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-[15.5px] font-medium">
+                  {f.q}
+                  <span className="sl-muted transition group-open:rotate-45"><Icon name="plus" /></span>
+                </summary>
+                <p className="sl-body sl-muted max-w-2xl pb-6">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ----------------------------------------------------------- cta */}
+      <section className="sl-grain relative overflow-hidden border-t" style={{ borderColor: "var(--sl-line)" }}>
+        <div className="relative z-[2] mx-auto flex max-w-[1320px] flex-col items-start gap-8 px-5 py-28 md:flex-row md:items-end md:justify-between md:px-10">
+          <h2 className="sl-display !text-[clamp(40px,6vw,84px)]">
+            Go live.
+            <br />
+            <span className="sl-outline">Get supported.</span>
+          </h2>
+          <Link href="/signup" className="sl-btn sl-btn-primary sl-btn-lg sl-btn-mono">Create your page</Link>
+        </div>
+      </section>
+    </MarketingPage>
+  );
+}
+
+/** A static, illustrative rendering of the creator overview. */
+function StudioPreview() {
+  const bars = [38, 52, 44, 61, 57, 72, 66, 84, 78, 92, 70, 88];
+  return (
+    <div className="mt-12 overflow-hidden rounded-[16px] border" style={{ borderColor: "var(--sl-line-2)", background: "var(--sl-bg-1)" }} aria-hidden="true">
+      <div className="flex h-10 items-center gap-1.5 border-b px-4" style={{ borderColor: "var(--sl-line)" }}>
+        <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--sl-surface-3)" }} />
+        <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--sl-surface-3)" }} />
+        <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--sl-surface-3)" }} />
+        <span className="sl-kicker ml-4 !text-[10px]">Studio · Overview</span>
+      </div>
+      <div className="grid gap-px md:grid-cols-[200px_1fr]" style={{ background: "var(--sl-line)" }}>
+        <div className="hidden space-y-1 p-4 md:block" style={{ background: "var(--sl-bg)" }}>
+          {["Overview", "Superchats", "Manage Interactions", "Stream Setup", "Customization", "Finance", "Settings"].map((n, i) => (
+            <div key={n} className="rounded-md px-3 py-2 text-[12.5px]" style={i === 0 ? { background: "var(--sl-surface-2)", color: "var(--sl-fg)" } : { color: "var(--sl-muted)" }}>{n}</div>
+          ))}
+        </div>
+        <div className="grid gap-4 p-5 lg:grid-cols-3" style={{ background: "var(--sl-bg)" }}>
+          {[["Today", "₹4,280"], ["This month", "₹58,940"], ["Available", "₹41,212"]].map(([k, v]) => (
+            <div key={k} className="sl-card p-4">
+              <p className="sl-muted text-[12px]">{k}</p>
+              <p className="sl-num mt-2 text-[24px] font-medium tracking-[-0.03em]">{v}</p>
+            </div>
+          ))}
+          <div className="sl-card p-4 lg:col-span-2">
+            <p className="sl-muted text-[12px]">Earnings, last 12 streams</p>
+            <div className="mt-4 flex h-32 items-end gap-2">
+              {bars.map((h, i) => (
+                <span key={i} className="flex-1 rounded-sm" style={{ height: `${h}%`, background: i === bars.length - 3 ? "var(--sl-accent)" : "var(--sl-surface-3)" }} />
+              ))}
+            </div>
+          </div>
+          <div className="sl-card p-4">
+            <p className="sl-muted text-[12px]">Recent superchats</p>
+            <div className="mt-3 space-y-3 text-[12.5px]">
+              {[["Aarav", "₹500"], ["Meera", "₹1,000"], ["Kabir", "₹200"]].map(([n, a]) => (
+                <div key={n} className="flex justify-between"><span>{n}</span><span className="sl-num sl-muted">{a}</span></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

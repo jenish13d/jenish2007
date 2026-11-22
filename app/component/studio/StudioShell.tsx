@@ -1,32 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 
-import DashboardSidebar from "@/app/component/DashboardSidebar";
 import LoadError from "@/app/component/LoadError";
 import StreamLoader from "@/app/component/StreamLoader";
-import { loginUrl, resolveClientAuth } from "@/lib/supabase/client-auth";
+import { Icon, LogoMark, type IconName } from "@/app/component/ui/icons";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
-
-import { STUDIO_CSS } from "./theme";
+import { loginUrl, resolveClientAuth } from "@/lib/supabase/client-auth";
 
 /**
- * Shared frame for new creator-studio pages. It reuses the existing
- * Soundboard page's visual system (ambient background, glass panels, rise
- * animations, sidebar) so every new screen looks native to StreamLounge.
+ * The creator studio frame: sidebar navigation, top bar, theme, footer.
+ * Every creator screen renders inside it, so the product reads as one system.
  */
 
 export function d(ms: number): CSSProperties {
   return { ["--d" as string]: ms } as CSSProperties;
 }
 
-export type StudioSession = { userId: string; creatorName: string; email: string };
+export type StudioSession = { userId: string; creatorName: string; email: string; username?: string | null };
 
-/**
- * Loads the signed-in creator. A missing session goes to /login; a network or
- * server failure becomes a retryable error instead of an endless loader.
- */
 export function useStudioSession(nextPath: string) {
   const router = useRouter();
   const [session, setSession] = useState<StudioSession | null>(null);
@@ -47,19 +41,19 @@ export function useStudioSession(nextPath: string) {
         return;
       }
       let creatorName = "Creator";
+      let username: string | null = null;
       try {
         const { data: profile } = await getSupabaseBrowserClient()
           .from("creator_profiles")
-          .select("creator_name")
+          .select("creator_name, username")
           .eq("id", auth.user.id)
           .maybeSingle();
         creatorName = profile?.creator_name || creatorName;
+        username = profile?.username || null;
       } catch {
-        // The name is cosmetic; never block the page on it.
+        // Cosmetic only; never block the page on it.
       }
-      if (!cancelled) {
-        setSession({ userId: auth.user.id, creatorName, email: auth.user.email || "" });
-      }
+      if (!cancelled) setSession({ userId: auth.user.id, creatorName, email: auth.user.email || "", username });
     })();
     return () => {
       cancelled = true;
@@ -72,6 +66,82 @@ export function useStudioSession(nextPath: string) {
   }, []);
 
   return { session, authError, retryAuth };
+}
+
+/* ------------------------------------------------------------------ theme */
+
+export type UiTheme = "dark" | "light";
+const THEME_KEY = "sl-theme";
+
+export function useUiTheme(): [UiTheme, (t: UiTheme) => void] {
+  const [theme, setThemeState] = useState<UiTheme>("dark");
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(THEME_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from storage once
+      if (saved === "light" || saved === "dark") setThemeState(saved);
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
+  const setTheme = useCallback((t: UiTheme) => {
+    setThemeState(t);
+    try {
+      window.localStorage.setItem(THEME_KEY, t);
+    } catch {
+      /* storage unavailable */
+    }
+    // Best effort: remember it on the account too.
+    void fetch("/api/creator/preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ ui_theme: t }),
+    }).catch(() => undefined);
+  }, []);
+  return [theme, setTheme];
+}
+
+/* ------------------------------------------------------------- navigation */
+
+type NavItem = { label: string; href: string; icon: IconName; match?: string[] };
+const NAV: { title: string; items: NavItem[] }[] = [
+  {
+    title: "Studio",
+    items: [
+      { label: "Overview", href: "/dashboard", icon: "overview" },
+      { label: "Superchats", href: "/dashboard/superchats", icon: "chat" },
+      { label: "Manage Interactions", href: "/dashboard/interactions", icon: "sliders" },
+    ],
+  },
+  {
+    title: "Broadcast",
+    items: [
+      { label: "Stream Setup", href: "/dashboard/stream-kit", icon: "broadcast", match: ["Stream Kit"] },
+      { label: "Soundboard", href: "/dashboard/soundboard", icon: "wave" },
+    ],
+  },
+  {
+    title: "Brand",
+    items: [{ label: "Customization", href: "/dashboard/customize", icon: "palette", match: ["Creator Page"] }],
+  },
+  {
+    title: "Money",
+    items: [
+      { label: "Finance", href: "/dashboard/finance", icon: "wallet", match: ["Earnings", "Analytics"] },
+      { label: "Payouts", href: "/dashboard/payouts", icon: "bank" },
+    ],
+  },
+  {
+    title: "Account",
+    items: [{ label: "Settings", href: "/dashboard/settings", icon: "settings" }],
+  },
+];
+
+function isActive(item: NavItem, active: string, pathname: string | null) {
+  if (item.label === active || item.match?.includes(active)) return true;
+  if (!pathname) return false;
+  return item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
 }
 
 export function StudioShell({
@@ -93,73 +163,142 @@ export function StudioShell({
   onRetry?: () => void;
   eyebrow: string;
   title: string;
-  accent: string;
-  subtitle: string;
+  accent?: string;
+  subtitle?: string;
   aside?: ReactNode;
   toast?: { text: string; tone: "success" | "error" } | null;
   children: ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const [theme, setTheme] = useUiTheme();
+  const [navOpen, setNavOpen] = useState(false);
 
-  if (authError) {
-    return <LoadError message={authError} onRetry={onRetry ?? (() => window.location.reload())} />;
-  }
+  if (authError) return <LoadError message={authError} onRetry={onRetry ?? (() => window.location.reload())} />;
+  if (!session) return <StreamLoader messages={["Opening your studio"]} />;
 
-  if (!session) {
-    return <StreamLoader size="sm" messages={["Opening your studio…", "Almost there…"]} />;
-  }
+  const initials = (session.creatorName || "C").trim().slice(0, 1).toUpperCase();
 
   return (
-    <div className="st-root">
-      <style>{STUDIO_CSS}</style>
-      <div className="st-ambient" aria-hidden="true">
-        <span className="st-orb st-orb-1" />
-        <span className="st-orb st-orb-2" />
-        <span className="st-orb st-orb-3" />
-        <span className="st-grid" />
-        <span className="st-beam st-beam-1" />
-        <span className="st-beam st-beam-2" />
-      </div>
+    <div className="sl st-root" data-theme={theme}>
+      <div className="sl-app">
+        <aside className="sl-side" data-open={navOpen} aria-label="Studio navigation">
+          <div className="flex items-center justify-between">
+            <Link href="/dashboard" className="sl-brand">
+              <LogoMark />
+              <span className="sl-wordmark">STREAMLOUNGE</span>
+            </Link>
+            <button type="button" className="sl-icon-btn lg:hidden" aria-label="Close navigation" onClick={() => setNavOpen(false)}>
+              <Icon name="close" />
+            </button>
+          </div>
 
-      <DashboardSidebar
-        activeItem={active}
-        creatorName={session.creatorName}
-        email={session.email}
-        onSignOut={async () => {
-          await getSupabaseBrowserClient().auth.signOut();
-          router.push("/login");
-        }}
-      />
+          <nav className="sl-nav">
+            {NAV.map((group) => (
+              <div key={group.title} className="sl-nav-group">
+                <p className="sl-nav-title">{group.title}</p>
+                {group.items.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={isActive(item, active, pathname) ? "page" : undefined}
+                    onClick={() => setNavOpen(false)}
+                  >
+                    <Icon name={item.icon} />
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            ))}
+          </nav>
 
-      {toast && (
-        <div
-          key={toast.text + toast.tone}
-          role="status"
-          aria-live="polite"
-          className={`st-toast ${toast.tone === "success" ? "st-toast-success" : "st-toast-error"}`}
-        >
-          {toast.text}
-        </div>
-      )}
-
-      <main className="st-main lg:pl-[250px]">
-        <div className="mx-auto max-w-[1500px] px-5 py-7 md:px-8 lg:px-10">
-          <header className="st-rise mb-8 flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between" style={d(0)}>
-            <div>
-              <p className="st-eyebrow">
-                <span className="st-dot" />
-                {eyebrow}
-              </p>
-              <h1 className="st-h1 mt-5">
-                {title} <span className="st-grad">{accent}</span>
-              </h1>
-              <p className="st-muted mt-3 max-w-xl text-base leading-7">{subtitle}</p>
+          <div className="sl-side-foot">
+            <div className="flex items-center gap-3 px-2 py-1">
+              <span
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[13px] font-medium"
+                style={{ background: "var(--sl-surface-3)", color: "var(--sl-fg)", border: "1px solid var(--sl-line)" }}
+              >
+                {initials}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-medium">{session.creatorName}</span>
+                <span className="sl-faint block truncate text-[11.5px]">{session.email}</span>
+              </span>
+              <button
+                type="button"
+                className="sl-icon-btn"
+                aria-label="Sign out"
+                title="Sign out"
+                onClick={async () => {
+                  await getSupabaseBrowserClient().auth.signOut();
+                  router.push("/login");
+                }}
+              >
+                <Icon name="logout" />
+              </button>
             </div>
-            {aside}
+          </div>
+        </aside>
+
+        <div className="flex min-w-0 flex-col">
+          <header className="sl-topbar">
+            <div className="flex min-w-0 items-center gap-2">
+              <button type="button" className="sl-icon-btn sl-mobile-nav" aria-label="Open navigation" onClick={() => setNavOpen(true)}>
+                <Icon name="menu" />
+              </button>
+              <span className="sl-kicker truncate">{eyebrow}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {session.username && (
+                <a className="sl-btn sl-btn-sm hidden sm:inline-flex" href={`/c/${session.username}`} target="_blank" rel="noreferrer">
+                  View public page <Icon name="external" size={13} />
+                </a>
+              )}
+              <button
+                type="button"
+                className="sl-icon-btn"
+                aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+                title={theme === "dark" ? "Light theme" : "Dark theme"}
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              >
+                <Icon name={theme === "dark" ? "sun" : "moon"} />
+              </button>
+            </div>
           </header>
-          {children}
+
+          {toast && (
+            <div key={toast.text + toast.tone} role="status" aria-live="polite" className="sl-toast" data-tone={toast.tone}>
+              {toast.text}
+            </div>
+          )}
+
+          <main className="st-main flex-1">
+            <div className="sl-page">
+              <div className="sl-page-head sl-in">
+                <div className="max-w-2xl">
+                  <h1 className="sl-h1">
+                    {title}
+                    {accent ? <span className="sl-faint"> {accent}</span> : null}
+                  </h1>
+                  {subtitle && <p className="sl-body sl-muted mt-2.5">{subtitle}</p>}
+                </div>
+                {aside}
+              </div>
+              {children}
+            </div>
+          </main>
+
+          <footer className="sl-app-foot">
+            <span>© {new Date().getFullYear()} StreamLounge · Powered by Lumvik Solutions</span>
+            <span className="flex gap-4">
+              <Link href="/legal/terms">Terms</Link>
+              <Link href="/legal/privacy">Privacy</Link>
+              <Link href="/legal/fees">Fees</Link>
+              <Link href="/company">Company</Link>
+            </span>
+          </footer>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
@@ -178,15 +317,15 @@ export function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="st-glass st-rise overflow-hidden" style={d(delay)}>
-      <div className="flex items-start justify-between gap-4 border-b border-white/10 p-5 md:px-7">
+    <section className="sl-card sl-in overflow-hidden" style={d(delay)}>
+      <div className="flex items-start justify-between gap-4 px-5 pt-5 md:px-6">
         <div>
-          <h2 className="st-h2 !text-xl">{title}</h2>
-          {subtitle && <p className="st-muted mt-1 text-sm leading-6">{subtitle}</p>}
+          <h2 className="sl-h3">{title}</h2>
+          {subtitle && <p className="sl-muted mt-1 text-[13px] leading-5">{subtitle}</p>}
         </div>
         {right}
       </div>
-      <div className="p-5 md:p-7">{children}</div>
+      <div className="p-5 md:p-6">{children}</div>
     </section>
   );
 }
@@ -195,7 +334,6 @@ export function Stat({
   label,
   value,
   hint,
-  color = "#5EEAD4",
   delay = 0,
 }: {
   label: string;
@@ -205,10 +343,10 @@ export function Stat({
   delay?: number;
 }) {
   return (
-    <div className="st-glass st-stat st-rise" style={{ ...d(delay), ["--accent" as string]: color } as CSSProperties}>
-      <span className="st-eyebrow !tracking-[.14em]">{label}</span>
-      <div className="st-stat-value mt-3">{value}</div>
-      {hint && <p className="st-muted mt-1 text-[11px] leading-4">{hint}</p>}
+    <div className="sl-card sl-in p-5" style={d(delay)}>
+      <div className="sl-stat-label">{label}</div>
+      <div className="sl-stat-value">{value}</div>
+      {hint && <p className="sl-stat-hint">{hint}</p>}
     </div>
   );
 }
@@ -227,10 +365,10 @@ export function Toggle({
   disabled?: boolean;
 }) {
   return (
-    <label className="flex cursor-pointer items-start justify-between gap-4 py-3">
+    <div className="flex items-start justify-between gap-4 py-3">
       <span>
-        <span className="block text-sm font-medium text-white">{label}</span>
-        {hint && <span className="st-muted mt-0.5 block text-xs leading-5">{hint}</span>}
+        <span className="block text-[13.5px] font-medium">{label}</span>
+        {hint && <span className="sl-muted mt-0.5 block text-[12.5px] leading-5">{hint}</span>}
       </span>
       <button
         type="button"
@@ -239,17 +377,9 @@ export function Toggle({
         aria-label={label}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full border transition ${
-          checked ? "border-[#5EEAD4]/40 bg-[#5EEAD4]/25" : "border-white/15 bg-white/[0.06]"
-        } disabled:opacity-50`}
-      >
-        <span
-          className={`absolute top-0.5 h-[18px] w-[18px] rounded-full transition-all ${
-            checked ? "left-[22px] bg-[#5EEAD4]" : "left-0.5 bg-white/60"
-          }`}
-        />
-      </button>
-    </label>
+        className="sl-switch mt-0.5"
+      />
+    </div>
   );
 }
 
@@ -257,7 +387,10 @@ export function formatRupees(paise: number): string {
   return `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
-export async function apiJson<T>(input: string, init?: RequestInit): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+export async function apiJson<T>(
+  input: string,
+  init?: RequestInit,
+): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
   try {
     const response = await fetch(input, {
       ...init,

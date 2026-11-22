@@ -8,7 +8,6 @@ import { useParams } from "next/navigation";
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
-import LivePreview from "@/app/component/LivePreview";
 
 type Profile = {
   id: string;
@@ -1685,7 +1684,7 @@ export default function CreatorPage() {
         {/* RIGHT */}
 
         <aside className="space-y-4">
-          <LivePreview />
+          {null}
 
           <div className="rounded-2xl border border-white/10 bg-[#102943]/75 shadow-[0_18px_60px_rgba(2,12,27,0.22)] backdrop-blur-xl p-5">
             <h3 className="text-base font-semibold">Support via QR</h3>
@@ -1846,7 +1845,7 @@ export default function CreatorPage() {
         </section>
 
         <section className="mt-4">
-          <LivePreview />
+          {null}
         </section>
 
         <section className="mt-4 rounded-2xl border border-white/10 bg-[#102943]/75 shadow-[0_18px_60px_rgba(2,12,27,0.22)] backdrop-blur-xl p-5">
