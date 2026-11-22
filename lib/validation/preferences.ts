@@ -1,5 +1,21 @@
 import { z } from "zod";
 
+/** Mirrors the CHECK in migration 0013. */
+export const EXTERNAL_RAZORPAY_URL = /^https:\/\/(rzp\.io|razorpay\.me|pages\.razorpay\.com)\/[A-Za-z0-9._~/@-]+$/;
+
+export const DASHBOARD_WIDGETS = [
+  "earnings", "balance", "trend", "sources", "recent", "supporters", "streams", "setup",
+] as const;
+export type DashboardWidget = (typeof DASHBOARD_WIDGETS)[number];
+
+export const dashboardLayoutSchema = z
+  .object({
+    order: z.array(z.enum(DASHBOARD_WIDGETS)).max(DASHBOARD_WIDGETS.length),
+    hidden: z.array(z.enum(DASHBOARD_WIDGETS)).max(DASHBOARD_WIDGETS.length),
+  })
+  .strict()
+  .refine((v) => new Set(v.order).size === v.order.length, "Duplicate widget in layout.");
+
 const plainText = (max: number) =>
   z
     .string()
@@ -49,6 +65,15 @@ export const updatePreferencesSchema = z
     location_state: plainText(60).nullable(),
     location_country: z.string().regex(/^[A-Z]{2}$/, "Use a 2-letter country code.").nullable(),
     location_continent: z.enum(["AF", "AN", "AS", "EU", "NA", "OC", "SA"]).nullable(),
+    // The creator's own Razorpay payment link (0% StreamLounge commission).
+    external_payment_url: z
+      .string()
+      .trim()
+      .max(200)
+      .regex(EXTERNAL_RAZORPAY_URL, "Use a Razorpay payment link (rzp.io, razorpay.me or pages.razorpay.com).")
+      .nullable(),
+    dashboard_layout: dashboardLayoutSchema,
+    ui_theme: z.enum(["dark", "light", "system"]),
   })
   .partial()
   .strict();

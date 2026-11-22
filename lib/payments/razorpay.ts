@@ -99,6 +99,11 @@ export interface RazorpayOrderNotes {
   interaction_type?: string;
   min_price?: string;
   charged_amount?: string;
+  /**
+   * Always "STREAMLOUNGE_QR": every order this server creates is collected by
+   * the platform account. Set here, never from a request.
+   */
+  payment_source?: "STREAMLOUNGE_QR";
   /** Signed-in viewer who created the order, set server-side. */
   viewer_user_id?: string;
 }
@@ -155,6 +160,7 @@ export function createOrder(params: {
         interaction_type: params.interactionType,
         min_price: String(params.minimumPriceRupees),
         charged_amount: String(Math.round(params.amountInPaise / 100)),
+        payment_source: "STREAMLOUNGE_QR",
         ...(params.viewerUserId ? { viewer_user_id: params.viewerUserId } : {}),
       } satisfies RazorpayOrderNotes,
     }),

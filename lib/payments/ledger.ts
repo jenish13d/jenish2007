@@ -11,6 +11,12 @@ import type { RazorpayPayment } from "./razorpay.ts";
  * The caller must already have fetched the payment from Razorpay and validated
  * it (amount, currency, order, captured status). Nothing here trusts a value
  * that came from a browser.
+ *
+ * Payment source: everything recorded here was collected by StreamLounge's own
+ * Razorpay account, so it is STREAMLOUNGE_QR (8% platform fee, frozen per row
+ * from platform_settings). The database enforces that `payments` holds no
+ * other source. External creator-owned links never reach this module — see
+ * lib/payments/fees.ts and app/api/payments/external-webhook.
  */
 
 export type LedgerResult = { ok: true } | { ok: false; error: string; retryable: boolean };
